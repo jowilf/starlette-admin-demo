@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>Starlette Admin Demo</title>
+    <link rel="stylesheet" href="{{ url_for('admin-sqla:statics', path='css/tabler.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('admin-sqla:statics', path='css/fontawesome.min.css') }}">
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+      :root {
+      	--tblr-font-sans-serif: Inter,-apple-system,BlinkMacSystemFont,San Francisco,Segoe UI,Roboto,Helvetica Neue,sans-serif !important;
+      }
+
+
+
+
+
+    </style>
+</head>
+<body>
+<div class="page">
+    <div class="page-body">
+        <div class="container-xl">
+            <div class="row justify-content-center">
+                <div class="col-10 col-lg-8">
+                    <div class="d-flex flex-column">
+                        <h1>Starlette Admin Demo</h1>
+                        <p class="text-muted">
+                            A demo project to showcase Starlette Admin features.<br>
+                            This project has two admin parts one built with SQLModel and
+                            another with mongoengine.
+                        </p>
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h3 class="card-title">SQLModel Admin</h3>
+                                        <p>
+                                            <strong>Username:</strong> admin or demo
+                                        </p>
+                                        <p>
+                                            <strong>Passowrd:</strong> password
+                                        </p>
+                                        <p>
+                                            <strong>Note:</strong> With the demo account you can only view Posts.
+                                            You can built the same thing with SQLAlchemy and your own validation
+                                            system.
+                                            Check the <a href="https://jowilf.github.io/starlette-admin/">documentation</a> for more information
+                                        </p>
+                                    </div>
+                                    <!-- Card footer -->
+                                    <div class="card-footer">
+                                        <a href="/admin-sqla" class="btn btn-primary">Browse admin</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-6 m-lg-0 mt-4">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h3 class="card-title">MongoEngine Admin</h3>
+                                        <p class="text-muted">
+                                            No account needed.
+                                        </p>
+                                    </div>
+                                    <!-- Card footer -->
+                                    <div class="card-footer">
+                                        <a href="/admin-mongo" class="btn btn-primary">Browse Admin</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript" src="{{ url_for('admin-sqla:statics', path='js/jquery.min.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('admin-sqla:statics', path='js/tabler.min.js') }}"></script>
+</body>
+</html>

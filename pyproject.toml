@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "starlette-admin-demo"
+version = "0.1.0"
+description = "A demo project to showcase Starlette Admin features"
+authors = ["Jocelin Hounon <hounonj@gmail.com>"]
+
+
+[tool.poetry.dependencies]
+python = "^3.7"
+mongoengine = "^0.24.2"
+sqlmodel = "^0.0.8"
+uvicorn = "^0.18.2"
+Pillow = "^9.2.0"
+Markdown = "^3.4.1"
+sqlalchemy-file = "^0.1.4"
+itsdangerous = "^2.1.2"
+fasteners = "^0.17.3"
+pydantic = {extras = ["email"], version = "^1.10.2"}
+starlette-admin = "^0.1.0"
+
+
+[tool.poetry.dev-dependencies]
+black = "^22.6.0"
+isort = "^5.10.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

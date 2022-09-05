@@ -1,0 +1,132 @@
+{% extends "layout.html" %}
+{% block header %}
+<div class="d-flex justify-content-between align-items-center">
+    <div class="row g-2 align-items-center">
+        <div class="col">
+            <h2 class="page-title">
+                Home
+            </h2>
+        </div>
+    </div>
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for(__name__ ~ ':index')}}">Admin</a>
+        </li>
+        <li class="breadcrumb-item active">Home</li>
+    </ol>
+</div>
+{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Latest Posts</h3>
+                </div>
+                <div class="card-body">
+                    <div class="list-group card-list-group">
+                        {%for post in posts%}
+                        <div class="list-group-item">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-fill d-flex flex-column">
+                                    <h3>{{post.title}}</h3>
+                                    <div class="d-flex flex-row">
+                                    <span class="text-muted">
+                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                         class="icon icon-tabler icon-tabler-calendar-time"
+                                         width="24" height="24" viewBox="0 0 24 24" stroke-width="2"
+                                         stroke="currentColor"
+                                         fill="none" stroke-linecap="round" stroke-linejoin="round">
+                               <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                               <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4"></path>
+                               <circle cx="18" cy="18" r="4"></circle>
+                               <path d="M15 3v4"></path>
+                               <path d="M7 3v4"></path>
+                               <path d="M3 11h16"></path>
+                               <path d="M18 16.496v1.504l1 1"></path>
+                            </svg>
+                                        {{post.published_at.strftime("%B %d, %Y %H:%M")}}
+                                    </span>
+                                        <a class="ms-3"
+                                           href="{{ url_for(__name__ ~ ':detail', identity='user',pk=post.publisher.id)}}">
+                                            <i class="fa-solid fa-user"></i>
+                                            {{post.publisher.full_name}}
+                                        </a>
+                                    </div>
+                                    <div class="d-flex flex-row mt-2">
+                                        {% for tag in post.tags %}
+                                        <span class="me-3 badge bg-purple-lt"><i class="fa fa-tag"></i> {{tag}}</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="">
+                                    <a class="btn btn-icon btn-outline-primary"
+                                       href="{{url_for(__name__ ~ ':detail', identity='post',pk=post.id)}}">
+                                        <i class="fa fa-eye"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {%endfor%}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 m-lg-0 mt-4">
+            <div class="row row-cards">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Top publishers</h3>
+                        </div>
+                        <div class="card-body">
+                            {% for user in users %}
+                            <div class="row g-3 align-items-center mb-3">
+                                <a href="#" class="col-auto">
+                                <span class="avatar" style="background-image: url({{ url_for(__name__ ~ ':api:file', storage=user.avatar.path.split('/')[0],file_id=user.avatar.file_id)}})">
+                                  </span>
+                                </a>
+                                <div class="col text-truncate">
+                                    <a href="{{ url_for(__name__ ~ ':detail', identity='user',pk=user.id)}}" class="text-reset d-block text-truncate">
+                                        {{user.full_name}}</a>
+                                    <div class="text-muted text-truncate mt-n1">{{user.posts | length}} posts</div>
+                                </div>
+                            </div>
+                            {%endfor%}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-stamp">
+                            <div class="card-stamp-icon bg-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-info-circle"
+                                     width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+                                     fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                    <circle cx="12" cy="12" r="9"></circle>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                    <polyline points="11 12 12 12 12 16 13 16"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div>
+                                <p>
+                                    This page is a <strong>custom home page</strong> which load
+                                    the latest posts and top publishers from database and display them.
+                                </p>
+                                <p>
+                                    For more information, check out the <a href="https://github.com/jowilf">StarletteAdmin
+                                    doc</a>.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

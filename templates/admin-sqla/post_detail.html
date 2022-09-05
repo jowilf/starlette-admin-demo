@@ -1,0 +1,163 @@
+{% extends "layout.html" %}
+{%set pk = model.pk_attr%}
+{% block header %}
+
+<div class="d-flex justify-content-end align-items-center">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for(__name__ ~ ':index')}}">Admin</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{{ url_for(__name__ ~ ':list', identity=model.identity)}}">Post</a>
+        </li>
+        <li class="breadcrumb-item active">Detail</li>
+    </ol>
+</div>
+{% endblock %} {% block modal %} {% include "modals/loading.html" %} {% include
+"modals/error.html" %} {% include "modals/delete.html" %} {% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex flex-column">
+                        <h2>{{obj.title}}</h2>
+                        <div class="d-flex flex-row">
+                            <span class="text-muted">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time"
+                                 width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+                                 fill="none" stroke-linecap="round" stroke-linejoin="round">
+                               <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                               <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4"></path>
+                               <circle cx="18" cy="18" r="4"></circle>
+                               <path d="M15 3v4"></path>
+                               <path d="M7 3v4"></path>
+                               <path d="M3 11h16"></path>
+                               <path d="M18 16.496v1.504l1 1"></path>
+                            </svg>
+                            {{obj.published_at}}
+                        </span>
+                            <a class="ms-3"
+                               href="{{ url_for(__name__ ~ ':detail', identity='user',pk=obj.publisher.id)}}">
+                                <i class="fa-solid fa-user"></i>
+                                {{obj.publisher.full_name}}
+                            </a>
+                        </div>
+                        <div class="d-flex flex-row mt-2">
+                            {% for tag in obj.tags %}
+
+                            <span class="me-3 badge bg-purple-lt"><i class="fa fa-tag"></i> {{tag}}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <div class="btn-list">
+                        {%if model.can_edit(request)%}
+                        <a href="{{ url_for(__name__ ~ ':edit', identity=model.identity,pk=obj[pk])}}">
+                            <button type="button" class="btn btn-primary btn-block me-2">
+                                <i class="fa-solid fa-edit me-2"></i>
+                                Edit
+                            </button>
+                        </a>
+                        {%endif%}
+                        {%if model.can_delete(request)%}
+                        <button
+                                id="delete-btn"
+                                type="button"
+                                class="btn btn-danger btn-block"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modal-delete"
+                        >
+                            <i class="fas fa-trash-alt me-2"></i>
+                            Delete
+                        </button>
+                        {%endif%}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="markdown">{{obj.content | safe}}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 m-lg-0 mt-4">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fa fa-comments"></i>
+                    {{obj.comments | length}} comments
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="divide-y">
+                        {# Here, we will use the raw_vaue which is sqlalchemy model to access to nested level,
+                        because the default value doesn't include deep relationships to avoid circular reference#}
+                        {% for comment in raw_obj.comments %}
+                        <div>
+                            <div class="row">
+                                <div class="col-auto">
+                                    <span class="avatar"
+                                          style="background-image: url({{url_for(__name__ ~ ':api:file', storage=comment.user.avatar.thumbnail.path.split('/')[0],file_id=comment.user.avatar.thumbnail.file_id)}})"></span>
+                                </div>
+                                <div class="col">
+                                    <div><a class="text-reset" href="{{ url_for(__name__ ~ ':detail', identity='user', pk=comment.user.id)}}"><strong>{{comment.user.full_name}}</strong> </a></div>
+                                    <div>{{comment.content}}</div>
+                                    <div class="text-muted">{{comment.created_at.strftime("%B %d, %Y %H:%M:%S")}}</div>
+                                </div>
+                            </div>
+                        </div>
+                        {%endfor%}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block script %}
+<script type="text/javascript" src="{{ url_for(__name__ ~ ':statics', path='js/utils.js') }}"></script>
+
+<script>
+  $(function () {
+
+
+    $("#modal-delete-btn").click(function () {
+      $("#modal-delete").modal('hide');
+      $("#modal-loading").modal('show');
+      fetch("{{ url_for(__name__ ~ ':api', identity=model.identity)  | safe}}?pks={{obj[pk]}}", {
+        method: "DELETE",
+      }).then(async response => {
+        if (response.ok) {
+          await new Promise(r => setTimeout(r, 500));
+          $("#modal-loading").modal('hide')
+          window.location.replace("{{ url_for(__name__ ~ ':list', identity=model.identity)  | safe}}")
+        } else
+          return Promise.reject();
+
+      }).catch(async (error) => {
+        await new Promise(r => setTimeout(r, 500));
+        $("#modal-loading").modal('hide')
+        $("#modal-error").modal('show');
+      });
+    });
+  })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</script>
+{% endblock %}

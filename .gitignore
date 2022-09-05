@@ -1,0 +1,17 @@
+*.pyc
+env*
+.mypy_cache
+.vscode
+.idea
+poetry.lock
+dist
+htmlcov
+*.egg-info
+.coverage
+coverage.xml
+site
+*.db
+.cache
+docker-compose.yml
+__pycache__/
+.pytest_cache/
