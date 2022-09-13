@@ -16,7 +16,7 @@ sqlalchemy-file = "^0.1.4"
 itsdangerous = "^2.1.2"
 fasteners = "^0.17.3"
 pydantic = {extras = ["email"], version = "^1.10.2"}
-starlette-admin = "^0.1.1"
+starlette-admin = "^0.2.0"
 
 
 [tool.poetry.dev-dependencies]
