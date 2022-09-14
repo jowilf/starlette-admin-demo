@@ -84,8 +84,7 @@
                             {% for user in users %}
                             <div class="row g-3 align-items-center mb-3">
                                 <a href="#" class="col-auto">
-                                <span class="avatar" style="background-image: url({{ url_for(__name__ ~ ':api:file', storage=user.avatar.path.split('/')[0],file_id=user.avatar.file_id)}})">
-                                  </span>
+                                <span class="avatar"  {% if user.avatar%}style="background-image: url({{ url_for(__name__ ~ ':api:file', storage=user.avatar.upload_storage,file_id=user.avatar.file_id)}})"{%endif%}>{% if not user.avatar%}{{user.full_name[0]}}{%endif%}</span>
                                 </a>
                                 <div class="col text-truncate">
                                     <a href="{{ url_for(__name__ ~ ':detail', identity='user',pk=user.id)}}" class="text-reset d-block text-truncate">

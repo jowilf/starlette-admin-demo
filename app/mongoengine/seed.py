@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 
 from app.config import config
 from app.helpers import get_assets
@@ -19,7 +20,7 @@ def fill_database():
             title=value["title"],
             description=value["description"],
             price=value["price"],
-            created_at=value["created_at"],
+            created_at=datetime.fromisoformat(value["created_at"]),
             category=Category.objects(name=value["category_name"]).get(),
         )
         product.image.put(

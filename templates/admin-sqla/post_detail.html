@@ -98,7 +98,7 @@
                             <div class="row">
                                 <div class="col-auto">
                                     <span class="avatar"
-                                          style="background-image: url({{url_for(__name__ ~ ':api:file', storage=comment.user.avatar.thumbnail.path.split('/')[0],file_id=comment.user.avatar.thumbnail.file_id)}})"></span>
+                                          {% if comment.user.avatar%} style="background-image: url({{url_for(__name__ ~ ':api:file', storage=comment.user.avatar.thumbnail.upload_storage,file_id=comment.user.avatar.thumbnail.file_id)}})"{%endif%}>{% if not comment.user.avatar%}{{comment.user.full_name[0]}}{%endif%}</span>
                                 </div>
                                 <div class="col">
                                     <div><a class="text-reset" href="{{ url_for(__name__ ~ ':detail', identity='user', pk=comment.user.id)}}"><strong>{{comment.user.full_name}}</strong> </a></div>
