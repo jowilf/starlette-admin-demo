@@ -8,6 +8,7 @@ from app.mongoengine.models import Category, Product
 
 
 class ProductView(ModelView, document=Product):
+    page_size_options = [5, 10]
     label = "Products"
 
     async def serialize_field_value(
@@ -18,7 +19,7 @@ class ProductView(ModelView, document=Product):
         return await super().serialize_field_value(value, field, action, request)
 
     def can_delete(self, request: Request) -> bool:
-        return False
+        return True
 
 
 class CategoryView(ModelView, document=Category):
@@ -28,6 +29,9 @@ class CategoryView(ModelView, document=Category):
 
     async def repr(self, obj: Any, request: Request) -> str:
         return obj.name
+
+    def can_delete(self, request: Request) -> bool:
+        return False
 
 
 class Store(DropDown):
