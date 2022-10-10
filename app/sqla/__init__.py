@@ -22,7 +22,7 @@ engine = create_engine(config.engine)
 admin = Admin(
     engine,
     title="SQLModel Admin",
-    base_url="/admin-sqla",
+    base_url="/admin/sqla",
     route_name="admin-sqla",
     templates_dir="templates/admin-sqla",
     logo_url="https://preview.tabler.io/static/logo-white.svg",

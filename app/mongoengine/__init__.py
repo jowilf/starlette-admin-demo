@@ -11,7 +11,7 @@ connection = connect(host=config.mongo_host)
 
 admin = Admin(
     "MongoEngine Admin",
-    base_url="/admin-mongo",
+    base_url="/admin/mongo",
     route_name="admin-mongo",
     logo_url="https://preview.tabler.io/static/logo-white.svg",
     login_logo_url="https://preview.tabler.io/static/logo.svg",
