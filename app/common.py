@@ -20,13 +20,13 @@ class SQLAlchemyFileDocumentation(Link):
 class GotoMongoAdmin(Link):
     label = "MongoEngine Admin"
     icon = "fa fa-link"
-    url = "/admin-mongo"
+    url = "/admin/mongo"
 
 
 class GotoSqlaAdmin(Link):
     label = "SQLAlchemy Admin"
     icon = "fa fa-link"
-    url = "/admin-sqla"
+    url = "/admin/sqla"
 
 
 class Resources(DropDown):

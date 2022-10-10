@@ -3,13 +3,14 @@ from typing import Any, Dict, Union
 import markupsafe
 from jinja2 import Template
 from markdown import markdown
-from sqlalchemy import create_engine, desc, func, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.templating import Jinja2Templates
 from starlette_admin import BaseField, CustomView, EmailField, TagsField
 from starlette_admin.contrib.sqla import SQLModelView as ModelView
+from starlette_admin.exceptions import FormValidationError
 
 from app.sqla.models import Comment, Post, User
 
@@ -72,8 +73,14 @@ class PostView(ModelView, model=Post):
     exclude_fields_from_edit = [Post.published_at]
     detail_template = "post_detail.html"
 
+    async def validate(self, request: Request, data: Dict[str, Any]) -> None:
+        """Assert publisher is not None"""
+        if data["publisher"] is None:
+            raise FormValidationError({"publisher": "Can't add post without publisher"})
+        return await super().validate(request, data)
+
     async def serialize_field_value(
-        self, value: Any, field: BaseField, ctx: str, request: Request
+            self, value: Any, field: BaseField, ctx: str, request: Request
     ) -> Union[Dict[str, Any], str, None]:
         if ctx == "VIEW" and field.name == "content":
             return markdown(markupsafe.escape(value))
@@ -118,10 +125,10 @@ class CustomIndexView(CustomView):
         stmt1 = select(Post).limit(10).order_by(desc(Post.published_at))
         stmt2 = (
             select(User, func.count(Post.id).label("cnt"))
-            .limit(5)
-            .join(Post)
-            .group_by(User.id)
-            .order_by(desc("cnt"))
+                .limit(5)
+                .join(Post)
+                .group_by(User.id)
+                .order_by(desc("cnt"))
         )
         posts = session.execute(stmt1).scalars().all()
         users = session.execute(stmt2).scalars().all()
