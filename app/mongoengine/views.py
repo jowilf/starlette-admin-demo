@@ -15,7 +15,7 @@ class ProductView(ModelView, document=Product):
         self, value: Any, field: BaseField, action: str, request: Request
     ) -> Union[Dict[Any, Any], str, None]:
         if field.name == "price" and action != "EDIT":
-            return f"{value}$"
+            return f"${value}"
         return await super().serialize_field_value(value, field, action, request)
 
     def can_delete(self, request: Request) -> bool:
