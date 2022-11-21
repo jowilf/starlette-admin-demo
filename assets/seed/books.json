@@ -1,0 +1,1438 @@
+{
+  "authors": [
+    {
+      "first_name": "Kristen",
+      "last_name": "Sullivan",
+      "email": "tammy59@wagner.com",
+      "addresses": [
+        {
+          "street": "3162 Martin Luther King Junior Boulevard",
+          "city": "Fayetteville",
+          "state": "AR",
+          "zipcode": "72704"
+        }
+      ]
+    },
+    {
+      "first_name": "John",
+      "last_name": "Montgomery",
+      "email": "kyleblair@rivera.com",
+      "addresses": [
+        {
+          "street": "125 John Street",
+          "city": "Santa Cruz",
+          "state": "CA",
+          "zipcode": "95060"
+        },
+        {
+          "street": "132 Laurel Green Court",
+          "city": "Savannah",
+          "state": "GA",
+          "zipcode": "31419"
+        },
+        {
+          "street": "1745 T Street Southeast",
+          "city": "Washington",
+          "state": "DC",
+          "zipcode": "20020"
+        }
+      ]
+    },
+    {
+      "first_name": "James",
+      "last_name": "Bowman",
+      "email": "hramos@brown-sellers.com",
+      "addresses": [
+        {
+          "street": "22572 Toreador Drive",
+          "city": "Salinas",
+          "state": "CA",
+          "zipcode": "93908"
+        }
+      ]
+    },
+    {
+      "first_name": "Raymond",
+      "last_name": "Cortez",
+      "email": "salazarmaria@sanchez-nguyen.com",
+      "addresses": [
+        {
+          "street": "81 Seaton Place Northwest",
+          "city": "Washington",
+          "state": "DC",
+          "zipcode": "20001"
+        }
+      ]
+    },
+    {
+      "first_name": "Jeffrey",
+      "last_name": "Stark",
+      "email": "lindawest@kaiser.info",
+      "addresses": [
+        {
+          "street": "1 Kempf Drive",
+          "city": "Easton",
+          "state": "MA",
+          "zipcode": "02375"
+        }
+      ]
+    },
+    {
+      "first_name": "Kelly",
+      "last_name": "Turner",
+      "email": "kelleylisa@harris.com",
+      "addresses": [
+        {
+          "street": "6601 West Ocotillo Road",
+          "city": "Glendale",
+          "state": "AZ",
+          "zipcode": "85301"
+        },
+        {
+          "street": "132 Laurel Green Court",
+          "city": "Savannah",
+          "state": "GA",
+          "zipcode": "31419"
+        }
+      ]
+    },
+    {
+      "first_name": "Lauren",
+      "last_name": "Davis",
+      "email": "barbara42@underwood.org",
+      "addresses": [
+        {
+          "street": "31353 Santa Elena Way",
+          "city": "Union City",
+          "state": "CA",
+          "zipcode": "94587"
+        },
+        {
+          "street": "4695 East Huntsville Road",
+          "city": "Fayetteville",
+          "state": "AR",
+          "zipcode": "72701"
+        },
+        {
+          "street": "1770 Colony Way",
+          "city": "Fayetteville",
+          "state": "AR",
+          "zipcode": "72704"
+        }
+      ]
+    },
+    {
+      "first_name": "Cesar",
+      "last_name": "Green",
+      "email": "nancymclean@villanueva.biz",
+      "addresses": [
+        {
+          "street": "1770 Colony Way",
+          "city": "Fayetteville",
+          "state": "AR",
+          "zipcode": "72704"
+        },
+        {
+          "street": "1745 T Street Southeast",
+          "city": "Washington",
+          "state": "DC",
+          "zipcode": "20020"
+        },
+        {
+          "street": "21950 Arnold Center Road",
+          "city": "Carson",
+          "state": "CA",
+          "zipcode": "90810"
+        }
+      ]
+    },
+    {
+      "first_name": "Aimee",
+      "last_name": "Warren",
+      "email": "melissajacobson@bryan.info",
+      "addresses": [
+        {
+          "street": "3729 East Mission Boulevard",
+          "city": "Fayetteville",
+          "state": "AR",
+          "zipcode": "72703"
+        },
+        {
+          "street": "5615 West Villa Maria Drive",
+          "city": "Glendale",
+          "state": "AZ",
+          "zipcode": "85308"
+        },
+        {
+          "street": "700 Winston Place",
+          "city": "Anchorage",
+          "state": "AK",
+          "zipcode": "99504"
+        }
+      ]
+    },
+    {
+      "first_name": "Isabella",
+      "last_name": "Davidson",
+      "email": "christopher91@matthews-rogers.com",
+      "addresses": [
+        {
+          "street": "132 Laurel Green Court",
+          "city": "Savannah",
+          "state": "GA",
+          "zipcode": "31419"
+        }
+      ]
+    },
+    {
+      "first_name": "Joseph",
+      "last_name": "Smith",
+      "email": "nathanjackson@cabrera-garcia.com",
+      "addresses": [
+        {
+          "street": "5306 Ritchie Highway",
+          "city": "Baltimore",
+          "state": "MD",
+          "zipcode": "21225"
+        },
+        {
+          "street": "450 Kinhawk Drive",
+          "city": "Nashville",
+          "state": "TN",
+          "zipcode": "37211"
+        },
+        {
+          "street": "1649 Timberridge Court",
+          "city": "Fayetteville",
+          "state": "AR",
+          "zipcode": "72704"
+        }
+      ]
+    },
+    {
+      "first_name": "Lisa",
+      "last_name": "Robinson",
+      "email": "johnsoncynthia@greer.com",
+      "addresses": [
+        {
+          "street": "20930 Todd Valley Road",
+          "city": "Foresthill",
+          "state": "CA",
+          "zipcode": "95631"
+        }
+      ]
+    },
+    {
+      "first_name": "James",
+      "last_name": "Jacobs",
+      "email": "jennifermendoza@owen.biz",
+      "addresses": [
+        {
+          "street": "2203 7th Street Road",
+          "city": "Louisville",
+          "state": "KY",
+          "zipcode": "40208"
+        },
+        {
+          "street": "74 Ranch Drive",
+          "city": "Montgomery",
+          "state": "AL",
+          "zipcode": "36109"
+        },
+        {
+          "street": "8502 Madrone Avenue",
+          "city": "Louisville",
+          "state": "KY",
+          "zipcode": "40258"
+        }
+      ]
+    },
+    {
+      "first_name": "Jordan",
+      "last_name": "Garcia",
+      "email": "charlesturner@white-gordon.com",
+      "addresses": [
+        {
+          "street": "74 Springfield Street",
+          "city": "Agawam",
+          "state": "MA",
+          "zipcode": "01001"
+        },
+        {
+          "street": "80 North East Street",
+          "city": "Holyoke",
+          "state": "MA",
+          "zipcode": "01040"
+        },
+        {
+          "street": "4695 East Huntsville Road",
+          "city": "Fayetteville",
+          "state": "AR",
+          "zipcode": "72701"
+        }
+      ]
+    },
+    {
+      "first_name": "Vanessa",
+      "last_name": "Garcia",
+      "email": "jorgestrong@massey-sellers.com",
+      "addresses": [
+        {
+          "street": "1347 Blackwalnut Court",
+          "city": "Annapolis",
+          "state": "MD",
+          "zipcode": "21403"
+        },
+        {
+          "street": "5403 Illinois Avenue",
+          "city": "Nashville",
+          "state": "TN",
+          "zipcode": "37209"
+        },
+        {
+          "street": "491 Arabian Way",
+          "city": "Grand Junction",
+          "state": "CO",
+          "zipcode": "81504"
+        }
+      ]
+    },
+    {
+      "first_name": "Tammy",
+      "last_name": "Chambers",
+      "email": "kramereric@peterson.com",
+      "addresses": [
+        {
+          "street": "2010 Rising Hill Drive",
+          "city": "Norman",
+          "state": "OK",
+          "zipcode": "73071"
+        },
+        {
+          "street": "8505 Waters Avenue",
+          "city": "Savannah",
+          "state": "GA",
+          "zipcode": "31406"
+        },
+        {
+          "street": "1208 Elkader Court North",
+          "city": "Nashville",
+          "state": "TN",
+          "zipcode": "37013"
+        }
+      ]
+    },
+    {
+      "first_name": "Elizabeth",
+      "last_name": "Morse",
+      "email": "ruizrobert@golden.biz",
+      "addresses": [
+        {
+          "street": "1364 Capri Drive",
+          "city": "Panama City",
+          "state": "FL",
+          "zipcode": "32405"
+        },
+        {
+          "street": "1745 T Street Southeast",
+          "city": "Washington",
+          "state": "DC",
+          "zipcode": "20020"
+        },
+        {
+          "street": "5108 Franklin Street",
+          "city": "Savannah",
+          "state": "GA",
+          "zipcode": "31405"
+        }
+      ]
+    },
+    {
+      "first_name": "Ann",
+      "last_name": "King",
+      "email": "ellischristian@williams.info",
+      "addresses": [
+        {
+          "street": "3162 Martin Luther King Junior Boulevard",
+          "city": "Fayetteville",
+          "state": "AR",
+          "zipcode": "72704"
+        },
+        {
+          "street": "3466 Southview Avenue",
+          "city": "Montgomery",
+          "state": "AL",
+          "zipcode": "36111"
+        }
+      ]
+    },
+    {
+      "first_name": "Emily",
+      "last_name": "Bishop",
+      "email": "jenniferhughes@poole-miller.org",
+      "addresses": [
+        {
+          "street": "23 Sable Run Lane",
+          "city": "Methuen",
+          "state": "MA",
+          "zipcode": "01844"
+        }
+      ]
+    },
+    {
+      "first_name": "Ernest",
+      "last_name": "Hale",
+      "email": "danagray@carroll.org",
+      "addresses": [
+        {
+          "street": "2409 Research Boulevard",
+          "city": "Fort Collins",
+          "state": "CO",
+          "zipcode": "80526"
+        },
+        {
+          "street": "2203 7th Street Road",
+          "city": "Louisville",
+          "state": "KY",
+          "zipcode": "40208"
+        }
+      ]
+    },
+    {
+      "first_name": "Jenna",
+      "last_name": "Barton",
+      "email": "seangreen@griffin.net",
+      "addresses": [
+        {
+          "street": "519 West 75th Avenue",
+          "city": "Anchorage",
+          "state": "AK",
+          "zipcode": "99518"
+        },
+        {
+          "street": "637 Britannia Drive",
+          "city": "Vallejo",
+          "state": "CA",
+          "zipcode": "94591"
+        },
+        {
+          "street": "1347 Blackwalnut Court",
+          "city": "Annapolis",
+          "state": "MD",
+          "zipcode": "21403"
+        }
+      ]
+    },
+    {
+      "first_name": "Nicole",
+      "last_name": "Campos",
+      "email": "dnguyen@lamb.com",
+      "addresses": [
+        {
+          "street": "629 Debbie Drive",
+          "city": "Nashville",
+          "state": "TN",
+          "zipcode": "37076"
+        },
+        {
+          "street": "210 Green Road",
+          "city": "Manchester",
+          "state": "CT",
+          "zipcode": "06042"
+        },
+        {
+          "street": "165 Saint John Street",
+          "city": "Manchester",
+          "state": "CT",
+          "zipcode": "06040"
+        }
+      ]
+    },
+    {
+      "first_name": "Cynthia",
+      "last_name": "Key",
+      "email": "monroedavid@morales.biz",
+      "addresses": [
+        {
+          "street": "5906 Milton Avenue",
+          "city": "Deale",
+          "state": "MD",
+          "zipcode": "20751"
+        },
+        {
+          "street": "87 Horseshoe Drive",
+          "city": "West Windsor",
+          "state": "VT",
+          "zipcode": "05037"
+        }
+      ]
+    },
+    {
+      "first_name": "Alexis",
+      "last_name": "Smith",
+      "email": "bairdemma@davis.com",
+      "addresses": [
+        {
+          "street": "450 Kinhawk Drive",
+          "city": "Nashville",
+          "state": "TN",
+          "zipcode": "37211"
+        },
+        {
+          "street": "5928 West Mauna Loa Lane",
+          "city": "Glendale",
+          "state": "AZ",
+          "zipcode": "85306"
+        }
+      ]
+    },
+    {
+      "first_name": "Ian",
+      "last_name": "Barker",
+      "email": "znash@miller.com",
+      "addresses": [
+        {
+          "street": "165 Saint John Street",
+          "city": "Manchester",
+          "state": "CT",
+          "zipcode": "06040"
+        },
+        {
+          "street": "6463 Vrain Street",
+          "city": "Arvada",
+          "state": "CO",
+          "zipcode": "80003"
+        }
+      ]
+    },
+    {
+      "first_name": "Abigail",
+      "last_name": "Anderson",
+      "email": "darin24@williams.com",
+      "addresses": [
+        {
+          "street": "310 Timrod Road",
+          "city": "Manchester",
+          "state": "CT",
+          "zipcode": "06040"
+        },
+        {
+          "street": "308 Woodleaf Court",
+          "city": "Glen Burnie",
+          "state": "MD",
+          "zipcode": "21061"
+        },
+        {
+          "street": "5114 Greentree Drive",
+          "city": "Nashville",
+          "state": "TN",
+          "zipcode": "37211"
+        }
+      ]
+    },
+    {
+      "first_name": "Michael",
+      "last_name": "Edwards",
+      "email": "mathissusan@rios.biz",
+      "addresses": [
+        {
+          "street": "8398 West Denton Lane",
+          "city": "Glendale",
+          "state": "AZ",
+          "zipcode": "85305"
+        },
+        {
+          "street": "4 Old Colony Way",
+          "city": "Yarmouth",
+          "state": "MA",
+          "zipcode": "02664"
+        }
+      ]
+    },
+    {
+      "first_name": "Gregory",
+      "last_name": "Savage",
+      "email": "amatthews@hernandez.com",
+      "addresses": [
+        {
+          "street": "1508 Massachusetts Avenue Southeast",
+          "city": "Washington",
+          "state": "DC",
+          "zipcode": "20003"
+        },
+        {
+          "street": "1745 T Street Southeast",
+          "city": "Washington",
+          "state": "DC",
+          "zipcode": "20020"
+        }
+      ]
+    },
+    {
+      "first_name": "Matthew",
+      "last_name": "Higgins",
+      "email": "williamsfrank@roberts.com",
+      "addresses": [
+        {
+          "street": "4 Old Colony Way",
+          "city": "Yarmouth",
+          "state": "MA",
+          "zipcode": "02664"
+        }
+      ]
+    },
+    {
+      "first_name": "John",
+      "last_name": "Woods",
+      "email": "parkermelody@jones.biz",
+      "addresses": [
+        {
+          "street": "3162 Martin Luther King Junior Boulevard",
+          "city": "Fayetteville",
+          "state": "AR",
+          "zipcode": "72704"
+        }
+      ]
+    },
+    {
+      "first_name": "Regina",
+      "last_name": "Garcia",
+      "email": "zrogers@martinez-wilson.info",
+      "addresses": [
+        {
+          "street": "132 Laurel Green Court",
+          "city": "Savannah",
+          "state": "GA",
+          "zipcode": "31419"
+        },
+        {
+          "street": "125 John Street",
+          "city": "Santa Cruz",
+          "state": "CA",
+          "zipcode": "95060"
+        }
+      ]
+    },
+    {
+      "first_name": "Matthew",
+      "last_name": "Johnson",
+      "email": "samanthasims@drake-frey.com",
+      "addresses": [
+        {
+          "street": "159 Downey Drive",
+          "city": "Manchester",
+          "state": "CT",
+          "zipcode": "06040"
+        }
+      ]
+    },
+    {
+      "first_name": "James",
+      "last_name": "Morton",
+      "email": "brucesmith@hawkins-roberts.info",
+      "addresses": [
+        {
+          "street": "270 Chrissy's Court",
+          "city": "West Tammyfort",
+          "state": "VT",
+          "zipcode": "05443"
+        },
+        {
+          "street": "5906 Milton Avenue",
+          "city": "Deale",
+          "state": "MD",
+          "zipcode": "20751"
+        },
+        {
+          "street": "1101 Lotus Avenue",
+          "city": "Glen Burnie",
+          "state": "MD",
+          "zipcode": "21061"
+        }
+      ]
+    },
+    {
+      "first_name": "Jeff",
+      "last_name": "Klein",
+      "email": "richardsonvanessa@richards-jackson.com",
+      "addresses": [
+        {
+          "street": "74 Springfield Street",
+          "city": "Agawam",
+          "state": "MA",
+          "zipcode": "01001"
+        },
+        {
+          "street": "6601 West Ocotillo Road",
+          "city": "Glendale",
+          "state": "AZ",
+          "zipcode": "85301"
+        }
+      ]
+    },
+    {
+      "first_name": "Lynn",
+      "last_name": "Wilson",
+      "email": "leachshannon@harris.com",
+      "addresses": [
+        {
+          "street": "6231 North 67th Avenue",
+          "city": "Glendale",
+          "state": "AZ",
+          "zipcode": "85301"
+        }
+      ]
+    },
+    {
+      "first_name": "Daniel",
+      "last_name": "Hanson",
+      "email": "igray@garcia.info",
+      "addresses": [
+        {
+          "street": "1770 Colony Way",
+          "city": "Fayetteville",
+          "state": "AR",
+          "zipcode": "72704"
+        }
+      ]
+    },
+    {
+      "first_name": "Danielle",
+      "last_name": "Elliott",
+      "email": "frich@stark.info",
+      "addresses": [
+        {
+          "street": "310 Timrod Road",
+          "city": "Manchester",
+          "state": "CT",
+          "zipcode": "06040"
+        },
+        {
+          "street": "1903 Bashford Manor Lane",
+          "city": "Louisville",
+          "state": "KY",
+          "zipcode": "40218"
+        },
+        {
+          "street": "8315 Surf Drive",
+          "city": "Panama City Beach",
+          "state": "FL",
+          "zipcode": "32408"
+        }
+      ]
+    },
+    {
+      "first_name": "James",
+      "last_name": "Santiago",
+      "email": "alecthornton@nolan.com",
+      "addresses": [
+        {
+          "street": "3729 East Mission Boulevard",
+          "city": "Fayetteville",
+          "state": "AR",
+          "zipcode": "72703"
+        },
+        {
+          "street": "81 Seaton Place Northwest",
+          "city": "Washington",
+          "state": "DC",
+          "zipcode": "20001"
+        }
+      ]
+    },
+    {
+      "first_name": "Eric",
+      "last_name": "Morrison",
+      "email": "taguilar@roman.com",
+      "addresses": [
+        {
+          "street": "1513 Cathy Street",
+          "city": "Savannah",
+          "state": "GA",
+          "zipcode": "31415"
+        }
+      ]
+    },
+    {
+      "first_name": "Billy",
+      "last_name": "Perez",
+      "email": "blakeshane@owen.info",
+      "addresses": [
+        {
+          "street": "8821 West Myrtle Avenue",
+          "city": "Glendale",
+          "state": "AZ",
+          "zipcode": "85305"
+        },
+        {
+          "street": "19416 Barclay Road",
+          "city": "Castro Valley",
+          "state": "CA",
+          "zipcode": "94546"
+        }
+      ]
+    },
+    {
+      "first_name": "Rachel",
+      "last_name": "Wagner",
+      "email": "berryerika@chang.com",
+      "addresses": [
+        {
+          "street": "3301 Old Muldoon Road",
+          "city": "Anchorage",
+          "state": "AK",
+          "zipcode": "99504"
+        },
+        {
+          "street": "1 Kempf Drive",
+          "city": "Easton",
+          "state": "MA",
+          "zipcode": "02375"
+        }
+      ]
+    },
+    {
+      "first_name": "Carmen",
+      "last_name": "Nichols",
+      "email": "ybruce@willis.com",
+      "addresses": [
+        {
+          "street": "1208 Elkader Court North",
+          "city": "Nashville",
+          "state": "TN",
+          "zipcode": "37013"
+        },
+        {
+          "street": "3301 Old Muldoon Road",
+          "city": "Anchorage",
+          "state": "AK",
+          "zipcode": "99504"
+        },
+        {
+          "street": "125 John Street",
+          "city": "Santa Cruz",
+          "state": "CA",
+          "zipcode": "95060"
+        }
+      ]
+    },
+    {
+      "first_name": "William",
+      "last_name": "White",
+      "email": "marvin74@barton-cruz.biz",
+      "addresses": [
+        {
+          "street": "2721 Lindsay Avenue",
+          "city": "Louisville",
+          "state": "KY",
+          "zipcode": "40206"
+        }
+      ]
+    },
+    {
+      "first_name": "Selena",
+      "last_name": "Martin",
+      "email": "justingreer@mcmahon.biz",
+      "addresses": [
+        {
+          "street": "1267 Martin Street",
+          "city": "Nashville",
+          "state": "TN",
+          "zipcode": "37203"
+        }
+      ]
+    },
+    {
+      "first_name": "Michelle",
+      "last_name": "Vasquez",
+      "email": "nunezedward@jenkins-carr.biz",
+      "addresses": [
+        {
+          "street": "8821 West Myrtle Avenue",
+          "city": "Glendale",
+          "state": "AZ",
+          "zipcode": "85305"
+        },
+        {
+          "street": "5906 Milton Avenue",
+          "city": "Deale",
+          "state": "MD",
+          "zipcode": "20751"
+        }
+      ]
+    },
+    {
+      "first_name": "Thomas",
+      "last_name": "Williams",
+      "email": "andrewgeorge@soto.net",
+      "addresses": [
+        {
+          "street": "310 Timrod Road",
+          "city": "Manchester",
+          "state": "CT",
+          "zipcode": "06040"
+        },
+        {
+          "street": "2905 Stonebridge Court",
+          "city": "Norman",
+          "state": "OK",
+          "zipcode": "73071"
+        },
+        {
+          "street": "600 West 19th Avenue",
+          "city": "Anchorage",
+          "state": "AK",
+          "zipcode": "99503"
+        }
+      ]
+    },
+    {
+      "first_name": "Patrick",
+      "last_name": "Reed",
+      "email": "drodriguez@haynes.com",
+      "addresses": [
+        {
+          "street": "3034 Mica Street",
+          "city": "Fayetteville",
+          "state": "AR",
+          "zipcode": "72704"
+        },
+        {
+          "street": "7431 Candace Way",
+          "city": "Louisville",
+          "state": "KY",
+          "zipcode": "40214"
+        },
+        {
+          "street": "8800 Cordell Circle",
+          "city": "Anchorage",
+          "state": "AK",
+          "zipcode": "99502"
+        }
+      ]
+    },
+    {
+      "first_name": "Kenneth",
+      "last_name": "Reeves",
+      "email": "susanhughes@stark-brennan.com",
+      "addresses": [
+        {
+          "street": "560 Penstock Drive",
+          "city": "Grass Valley",
+          "state": "CA",
+          "zipcode": "95945"
+        },
+        {
+          "street": "6657 West Rose Garden Lane",
+          "city": "Glendale",
+          "state": "AZ",
+          "zipcode": "85308"
+        },
+        {
+          "street": "18 Densmore Drive",
+          "city": "Essex",
+          "state": "VT",
+          "zipcode": "05452"
+        }
+      ]
+    },
+    {
+      "first_name": "Wendy",
+      "last_name": "Dalton",
+      "email": "caseysean@gibson.com",
+      "addresses": [
+        {
+          "street": "5114 Greentree Drive",
+          "city": "Nashville",
+          "state": "TN",
+          "zipcode": "37211"
+        }
+      ]
+    },
+    {
+      "first_name": "Bill",
+      "last_name": "Winters",
+      "email": "rachel89@liu.net",
+      "addresses": [
+        {
+          "street": "2203 7th Street Road",
+          "city": "Louisville",
+          "state": "KY",
+          "zipcode": "40208"
+        },
+        {
+          "street": "7 Underwood Place Northwest",
+          "city": "Washington",
+          "state": "DC",
+          "zipcode": "20012"
+        },
+        {
+          "street": "130 Old Route 103",
+          "city": "Chester",
+          "state": "VT",
+          "zipcode": "05143"
+        }
+      ]
+    }
+  ],
+  "books": [
+    {
+      "title": "Ballinby Boys",
+      "format": "paperback",
+      "year": 1953,
+      "awards": [
+        "Hugo Award",
+        "Man Booker"
+      ]
+    },
+    {
+      "title": "Nothing But Capers",
+      "format": "paperback",
+      "year": 1918,
+      "awards": [
+        "PEN/Faulkner Award",
+        "Agatha Award",
+        "Pulitzer"
+      ]
+    },
+    {
+      "title": "Alanna Saves the Day",
+      "format": "mass_market_paperback",
+      "year": 1954,
+      "awards": []
+    },
+    {
+      "title": "Post Alley",
+      "format": "paperback",
+      "year": 1953,
+      "awards": []
+    },
+    {
+      "title": "Thatchwork Cottage",
+      "format": "paperback",
+      "year": 1953,
+      "awards": [
+        "Hugo Award"
+      ]
+    },
+    {
+      "title": "Zero over Twelve",
+      "format": "graphic",
+      "year": 2022,
+      "awards": []
+    },
+    {
+      "title": "Portmeirion",
+      "format": "hardcover",
+      "year": 1955,
+      "awards": [
+        "RITA Award",
+        "Caldecott Medal",
+        "National Book Award"
+      ]
+    },
+    {
+      "title": "Rystwyth",
+      "format": "mass_market_paperback",
+      "year": 1963,
+      "awards": [
+        "Pulitzer",
+        "World Fantasy Award"
+      ]
+    },
+    {
+      "title": "The Mallemaroking",
+      "format": "mass_market_paperback",
+      "year": 1932,
+      "awards": []
+    },
+    {
+      "title": "Can I Be Honest?",
+      "format": "hardcover",
+      "year": 1909,
+      "awards": []
+    },
+    {
+      "title": "No More Lightning",
+      "format": "graphic",
+      "year": 1988,
+      "awards": []
+    },
+    {
+      "title": "9803 North Millworks Road",
+      "format": "paperback",
+      "year": 1944,
+      "awards": [
+        "Hugo Award"
+      ]
+    },
+    {
+      "title": "The Winchcombe Railway Museum Heist",
+      "format": "paperback",
+      "year": 2006,
+      "awards": [
+        "World Fantasy Award"
+      ]
+    },
+    {
+      "title": "(im)Mortality",
+      "format": "mass_market_paperback",
+      "year": 1909,
+      "awards": [
+        "RITA Award"
+      ]
+    },
+    {
+      "title": "the life and times of an utterly inconsequential person",
+      "format": "paperback",
+      "year": 1900,
+      "awards": [
+        "Pulitzer"
+      ]
+    },
+    {
+      "title": "Land Water Sky Space",
+      "format": "mass_market_paperback",
+      "year": 1986,
+      "awards": []
+    },
+    {
+      "title": "And I Said Yes",
+      "format": "graphic",
+      "year": 1900,
+      "awards": [
+        "Pulitzer",
+        "Man Booker"
+      ]
+    },
+    {
+      "title": "Interrobangs for All",
+      "format": "mass_market_paperback",
+      "year": 1988,
+      "awards": []
+    },
+    {
+      "title": "Kalakalal Avenue",
+      "format": "mass_market_paperback",
+      "year": 1929,
+      "awards": [
+        "Pulitzer"
+      ]
+    },
+    {
+      "title": "Banana Slug and the Glass Half Full",
+      "format": "hardcover",
+      "year": 1958,
+      "awards": []
+    },
+    {
+      "title": "Not to Gossip, But",
+      "format": "hardcover",
+      "year": 1944,
+      "awards": [
+        "Hugo Award",
+        "Hugo Award"
+      ]
+    },
+    {
+      "title": "The Thing Is",
+      "format": "mass_market_paperback",
+      "year": 1903,
+      "awards": [
+        "Young Reader's Choice Award"
+      ]
+    },
+    {
+      "title": "Concerning Prophecy",
+      "format": "graphic",
+      "year": 1942,
+      "awards": [
+        "Hugo Award",
+        "Pulitzer",
+        "Man Booker"
+      ]
+    },
+    {
+      "title": "Banana Slug and the Lost Cow",
+      "format": "paperback",
+      "year": 1937,
+      "awards": [
+        "Hugo Award",
+        "Young Reader's Choice Award"
+      ]
+    },
+    {
+      "title": "Banana Slug and Xyr Friends",
+      "format": "paperback",
+      "year": 1975,
+      "awards": []
+    },
+    {
+      "title": "Cimornul",
+      "format": "paperback",
+      "year": 1968,
+      "awards": [
+        "National Book Award",
+        "World Fantasy Award"
+      ]
+    },
+    {
+      "title": "Quiddity and Quoddity",
+      "format": "mass_market_paperback",
+      "year": 1948,
+      "awards": [
+        "Hugo Award"
+      ]
+    },
+    {
+      "title": "The Startling End of Mr. Hidhoo",
+      "format": "hardcover",
+      "year": 2002,
+      "awards": [
+        "Hugo Award"
+      ]
+    },
+    {
+      "title": "Say it with Snap!",
+      "format": "paperback",
+      "year": 1965,
+      "awards": [
+        "National Book Award"
+      ]
+    },
+    {
+      "title": "The Elephant House",
+      "format": "graphic",
+      "year": 1996,
+      "awards": [
+        "Hugo Award"
+      ]
+    },
+    {
+      "title": "A Horrible Human with the Habits of a Monster",
+      "format": "graphic",
+      "year": 1947,
+      "awards": [
+        "Hugo Award",
+        "Hugo Award",
+        "PEN/Faulkner Award"
+      ]
+    },
+    {
+      "title": "Turn Left Til You Get There",
+      "format": "hardcover",
+      "year": 1905,
+      "awards": [
+        "Hugo Award"
+      ]
+    },
+    {
+      "title": "Dust on the Rim",
+      "format": "hardcover",
+      "year": 1902,
+      "awards": [
+        "Hugo Award",
+        "Pulitzer",
+        "Hugo Award"
+      ]
+    },
+    {
+      "title": "Tales of the Compass",
+      "format": "mass_market_paperback",
+      "year": 1989,
+      "awards": []
+    },
+    {
+      "title": "Burnished Silver",
+      "format": "mass_market_paperback",
+      "year": 1953,
+      "awards": [
+        "RITA Award",
+        "National Book Award"
+      ]
+    },
+    {
+      "title": "Did You Hear?",
+      "format": "mass_market_paperback",
+      "year": 1953,
+      "awards": [
+        "Hugo Award"
+      ]
+    },
+    {
+      "title": "Lace and Brandy",
+      "format": "mass_market_paperback",
+      "year": 1954,
+      "awards": [
+        "Pulitzer",
+        "RITA Award"
+      ]
+    },
+    {
+      "title": "Muddy Waters",
+      "format": "graphic",
+      "year": 1945,
+      "awards": []
+    },
+    {
+      "title": "Saint Esme",
+      "format": "paperback",
+      "year": 1956,
+      "awards": [
+        "Nebula Award",
+        "PEN/Faulkner Award"
+      ]
+    },
+    {
+      "title": "The Scent of Oranges",
+      "format": "mass_market_paperback",
+      "year": 2021,
+      "awards": []
+    },
+    {
+      "title": "The Seawitch Sings",
+      "format": "mass_market_paperback",
+      "year": 1952,
+      "awards": []
+    },
+    {
+      "title": "Whither Thou Goest",
+      "format": "graphic",
+      "year": 1993,
+      "awards": [
+        "National Book Award",
+        "National Book Award"
+      ]
+    },
+    {
+      "title": "Some Eggs or Something?",
+      "format": "graphic",
+      "year": 1926,
+      "awards": [
+        "Pulitzer",
+        "Hugo Award"
+      ]
+    },
+    {
+      "title": "Hashtag QuokkaSelfie",
+      "format": "paperback",
+      "year": 2021,
+      "awards": [
+        "National Book Award",
+        "Man Booker",
+        "Hugo Award"
+      ]
+    },
+    {
+      "title": "It's Never Just a Glass",
+      "format": "hardcover",
+      "year": 2021,
+      "awards": [
+        "Newberry Medal"
+      ]
+    },
+    {
+      "title": "Banana Slug and the Mossy Rock",
+      "format": "paperback",
+      "year": 1935,
+      "awards": []
+    },
+    {
+      "title": "Heliotrope Pajamas",
+      "format": "hardcover",
+      "year": 1977,
+      "awards": [
+        "National Book Award"
+      ]
+    },
+    {
+      "title": "Inconvenient Confessions: a memoir",
+      "format": "paperback",
+      "year": 1957,
+      "awards": [
+        "Hugo Award",
+        "Young Reader's Choice Award",
+        "World Fantasy Award"
+      ]
+    },
+    {
+      "title": "Who Did You Think You Were Kidding?",
+      "format": "graphic",
+      "year": 1998,
+      "awards": [
+        "Hugo Award",
+        "National Book Award",
+        "Man Booker"
+      ]
+    },
+    {
+      "title": "Natural Pamplemousse",
+      "format": "graphic",
+      "year": 1922,
+      "awards": [
+        "Hugo Award"
+      ]
+    },
+    {
+      "title": "We're Sisters and We Kinda Like Each Other",
+      "format": "paperback",
+      "year": 1943,
+      "awards": [
+        "National Book Award"
+      ]
+    },
+    {
+      "title": "Don't Check your Ego",
+      "format": "mass_market_paperback",
+      "year": 1959,
+      "awards": []
+    },
+    {
+      "title": "Soft, Pliable Truth",
+      "format": "graphic",
+      "year": 1996,
+      "awards": [
+        "World Fantasy Award"
+      ]
+    },
+    {
+      "title": "She Also Tottered",
+      "format": "hardcover",
+      "year": 1900,
+      "awards": [
+        "Newberry Medal",
+        "Nebula Award",
+        "National Book Award"
+      ]
+    },
+    {
+      "title": "The Spark and The Ashes",
+      "format": "paperback",
+      "year": 1959,
+      "awards": []
+    },
+    {
+      "title": "The Triscanipt",
+      "format": "graphic",
+      "year": 1938,
+      "awards": []
+    },
+    {
+      "title": "Adventures of Kaya",
+      "format": "mass_market_paperback",
+      "year": 1980,
+      "awards": [
+        "Nebula Award",
+        "Pulitzer"
+      ]
+    },
+    {
+      "title": "The Deep Grey",
+      "format": "graphic",
+      "year": 1977,
+      "awards": [
+        "National Book Award"
+      ]
+    }
+  ]
+}

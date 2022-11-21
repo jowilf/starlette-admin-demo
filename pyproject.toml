@@ -9,19 +9,22 @@ authors = ["Jocelin Hounon <hounonj@gmail.com>"]
 python = "^3.7"
 mongoengine = "^0.24.2"
 sqlmodel = "^0.0.8"
-uvicorn = "^0.18.2"
+uvicorn = "^0.20.0"
 Pillow = "^9.2.0"
 Markdown = "^3.4.1"
-sqlalchemy-file = "^0.1.4"
+sqlalchemy-file = "^0.1.5"
 itsdangerous = "^2.1.2"
-fasteners = "^0.17.3"
+fasteners = "^0.18"
 pydantic = {extras = ["email"], version = "^1.10.2"}
-starlette-admin = "^0.2.0"
+odmantic = "^0.9.0"
+starlette-admin = {path = "../starlette-admin"}
 
 
 [tool.poetry.dev-dependencies]
-black = "^22.6.0"
+black = "^22.10.0"
 isort = "^5.10.1"
+mypy = "^0.991"
+autoflake = "^1.7.7"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

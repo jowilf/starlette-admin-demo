@@ -1,40 +1,36 @@
-from typing import Any, Dict, Union
+from typing import Any
 
 from starlette.requests import Request
-from starlette_admin import BaseField, DropDown
 from starlette_admin.contrib.mongoengine import ModelView
 
-from app.mongoengine.models import Category, Product
+from app.mongoengine.fields import MoneyField
+from app.mongoengine.models import Product
 
 
-class ProductView(ModelView, document=Product):
-    page_size_options = [5, 10]
-    label = "Products"
+class ProductView(ModelView):
+    fields = [
+        "id",
+        "title",
+        "description",
+        MoneyField(
+            "price",
+            label="Price (USD)",
+            help_text="Product price in dollars (US)",
+        ),
+        "dimension",
+        "image",
+        "manual",
+        "created_at",
+        "category",
+    ]
+    exclude_fields_from_list = [Product.description]
+    exclude_fields_from_create = ["created_at"]
+    exclude_fields_from_edit = ["created_at"]
 
-    async def serialize_field_value(
-        self, value: Any, field: BaseField, action: str, request: Request
-    ) -> Union[Dict[Any, Any], str, None]:
-        if field.name == "price" and action != "EDIT":
-            return f"${value}"
-        return await super().serialize_field_value(value, field, action, request)
 
-    def can_delete(self, request: Request) -> bool:
-        return True
-
-
-class CategoryView(ModelView, document=Category):
-    label = "Categories"
-    page_size = 5
-    page_size_options = [5, 10]
-
+class CategoryView(ModelView):
     async def repr(self, obj: Any, request: Request) -> str:
         return obj.name
 
     def can_delete(self, request: Request) -> bool:
         return False
-
-
-class Store(DropDown):
-    label = "Store"
-    icon = "fa fa-store"
-    views = [ProductView, CategoryView]

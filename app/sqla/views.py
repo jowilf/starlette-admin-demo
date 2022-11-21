@@ -1,23 +1,20 @@
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
-import markupsafe
 from jinja2 import Template
-from markdown import markdown
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.templating import Jinja2Templates
-from starlette_admin import BaseField, CustomView, EmailField, TagsField
-from starlette_admin.contrib.sqla import SQLModelView as ModelView
+from starlette_admin import CustomView, EmailField, TagsField
+from starlette_admin.contrib.sqlmodel import ModelView
 from starlette_admin.exceptions import FormValidationError
 
+from app.sqla.fields import MarkdownField
 from app.sqla.models import Comment, Post, User
 
 
-class UserView(ModelView, model=User):
-    label = "Users"
-    icon = "fa fa-users"
+class UserView(ModelView):
     page_size_options = [5, 10, 25, -1]
     fields = [
         "id",
@@ -56,44 +53,36 @@ class UserView(ModelView, model=User):
         return False
 
 
-class PostView(ModelView, model=Post):
-    label = "Blog Posts"
-    icon = "fa fa-blog"
+class PostView(ModelView):
     fields = [
         "id",
         "title",
-        "content",
-        TagsField("tags"),
+        MarkdownField("content"),
+        TagsField("tags", render_function_key="tags"),
         "published_at",
         "publisher",
         "comments",
     ]
-    exclude_fields_from_list = ["content"]
+    exclude_fields_from_list = [Post.content]
     exclude_fields_from_create = [Post.published_at]
-    exclude_fields_from_edit = [Post.published_at]
+    exclude_fields_from_edit = ["published_at"]
     detail_template = "post_detail.html"
 
     async def validate(self, request: Request, data: Dict[str, Any]) -> None:
-        """Assert publisher is not None"""
+        """
+        Add custom validation to validate publisher as SQLModel
+        doesn't validate relation fields by default
+        """
         if data["publisher"] is None:
             raise FormValidationError({"publisher": "Can't add post without publisher"})
         return await super().validate(request, data)
-
-    async def serialize_field_value(
-            self, value: Any, field: BaseField, ctx: str, request: Request
-    ) -> Union[Dict[str, Any], str, None]:
-        if ctx == "VIEW" and field.name == "content":
-            return markdown(markupsafe.escape(value))
-        return await super().serialize_field_value(value, field, ctx, request)
 
     async def select2_result(self, obj: Any, request: Request) -> str:
         template_str = (
             "<span><strong>Title: </strong>{{obj.title}}, <strong>Publish by:"
             " </strong>{{obj.publisher.full_name}}</span>"
         )
-        return Template(template_str, autoescape=True).render(
-            obj=obj, fields=["id", "title"]
-        )
+        return Template(template_str, autoescape=True).render(obj=obj)
 
     def can_delete(self, request: Request) -> bool:
         return False
@@ -102,9 +91,7 @@ class PostView(ModelView, model=Post):
         return request.state.user == "admin"
 
 
-class CommentView(ModelView, model=Comment):
-    label = "Comments"
-    icon = "fa fa-comments"
+class CommentView(ModelView):
     page_size = 5
     page_size_options = [5, 10]
     exclude_fields_from_create = ["created_at"]
@@ -116,19 +103,16 @@ class CommentView(ModelView, model=Comment):
         return request.state.user == "admin"
 
 
-class CustomIndexView(CustomView):
-    label = "Home"
-    icon = "fa fa-home"
-
+class HomeView(CustomView):
     async def render(self, request: Request, templates: Jinja2Templates) -> Response:
         session: Session = request.state.session
         stmt1 = select(Post).limit(10).order_by(desc(Post.published_at))
         stmt2 = (
             select(User, func.count(Post.id).label("cnt"))
-                .limit(5)
-                .join(Post)
-                .group_by(User.id)
-                .order_by(desc("cnt"))
+            .limit(5)
+            .join(Post)
+            .group_by(User.id)
+            .order_by(desc("cnt"))
         )
         posts = session.execute(stmt1).scalars().all()
         users = session.execute(stmt2).scalars().all()

@@ -4,6 +4,8 @@ Starlette-Admin Demo Application
 This project is the official [Starlette-Admin][1] Demo application that showcases the
 main features of *Starlette-Admin*
 
+Available online [here](https://starlette-admin-demo.jowilf.com/)
+
 Usage
 -----
 

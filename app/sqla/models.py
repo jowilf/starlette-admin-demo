@@ -8,7 +8,7 @@ from sqlalchemy_file import File, ImageField
 from sqlalchemy_file.validators import SizeValidator
 from sqlmodel import Field, Relationship, SQLModel
 
-from app.common import UploadFile
+from app.helpers import UploadFile
 
 
 class Gender(str, enum.Enum):
@@ -42,7 +42,7 @@ class Post(SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
     title: str = Field(min_length=3)
     content: str = Field(sa_column=Column(Text))
-    tags: List[str] = Field(sa_column=Column(JSON))
+    tags: List[str] = Field(sa_column=Column(JSON), min_items=1, min_length=3)
     published_at: Optional[datetime] = Field(
         sa_column=Column(DateTime(timezone=True), default=datetime.utcnow)
     )

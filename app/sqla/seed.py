@@ -35,7 +35,7 @@ def clear_storage():
         obj.delete()
 
 
-def fill_database():
+async def fill_database():
     clear_storage()
     SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)

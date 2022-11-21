@@ -1,23 +1,39 @@
 from mongoengine import connect
+from starlette_admin import DropDown
 from starlette_admin.contrib.mongoengine import Admin
+from starlette_admin.views import Link
 
-from app.common import GotoSqlaAdmin, Resources
 from app.config import config
-from app.mongoengine.views import CategoryView, ProductView, Store
+from app.mongoengine.fields import MoneyField
+from app.mongoengine.models import Category, Product
+from app.mongoengine.views import CategoryView, ProductView
 
 __all__ = ["admin", "connection"]
 
-connection = connect(host=config.mongo_host)
+connection = connect(host=config.mongo_host + config.mongo_db)
 
 admin = Admin(
     "MongoEngine Admin",
-    base_url="/admin/mongo",
-    route_name="admin-mongo",
+    base_url="/admin/mongoengine",
+    route_name="admin-mongoengine",
     logo_url="https://preview.tabler.io/static/logo-white.svg",
     login_logo_url="https://preview.tabler.io/static/logo.svg",
-    templates_dir="templates/admin-mongo",
+    templates_dir="templates/admin/mongoengine",
 )
 
-admin.add_view(Store)
-admin.add_view(Resources)
-admin.add_view(GotoSqlaAdmin)
+admin.add_view(
+    DropDown(
+        label="Store",
+        icon="fa fa-store",
+        views=[ProductView(Product), CategoryView(Category, label="Categories")],
+    )
+)
+admin.add_view(
+    Link(
+        "StarletteAdmin Docs",
+        url="https://jowilf.github.io/starlette-admin/",
+        icon="fa fa-book",
+        target="_blank",
+    )
+)
+admin.add_view(Link(label="Go Back to Home", icon="fa fa-link", url="/"))
