@@ -10,7 +10,7 @@ from app.mongoengine.views import CategoryView, ProductView
 
 __all__ = ["admin", "connection"]
 
-connection = connect(host=config.mongo_host + config.mongo_db)
+connection = connect(host=config.mongo_uri)
 
 admin = Admin(
     "MongoEngine Admin",

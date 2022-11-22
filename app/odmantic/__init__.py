@@ -11,7 +11,7 @@ __all__ = ["admin", "engine"]
 from app.odmantic.views import AuthorView
 
 engine = AIOEngine(
-    client=AsyncIOMotorClient(config.mongo_host), database=config.mongo_db
+    client=AsyncIOMotorClient(config.mongo_uri), database=config.mongo_db
 )
 admin = Admin(
     engine,
