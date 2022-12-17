@@ -3,6 +3,7 @@ from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
+from app.config import config
 from app.mongoengine import admin as admin_mongo
 from app.odmantic import admin as admin_odm
 from app.sqla import admin as admin_sqla
@@ -10,7 +11,7 @@ from app.sqla import admin as admin_sqla
 
 async def homepage(request):
     return Jinja2Templates("templates").TemplateResponse(
-        "index.html", {"request": request}
+        "index.html", {"request": request, "config": config}
     )
 
 

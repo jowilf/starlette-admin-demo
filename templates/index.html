@@ -11,7 +11,24 @@
       :root {
       	--tblr-font-sans-serif: Inter,-apple-system,BlinkMacSystemFont,San Francisco,Segoe UI,Roboto,Helvetica Neue,sans-serif !important;
       }
+
     </style>
+    {% if config.gtag %}
+    <script
+            async
+            src="https://www.googletagmanager.com/gtag/js?id={{config.gtag}}"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "{{config.gtag}}");
+
+    </script>
+    {% endif %}
 </head>
 <body>
 
