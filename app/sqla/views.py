@@ -88,7 +88,7 @@ class PostView(ModelView):
         return False
 
     def can_edit(self, request: Request) -> bool:
-        return request.state.user == "admin"
+        return "admin" in request.state.user["roles"]
 
 
 class CommentView(ModelView):
@@ -100,7 +100,7 @@ class CommentView(ModelView):
     sortable_fields = [Comment.pk, Comment.content, Comment.created_at]
 
     def is_accessible(self, request: Request) -> bool:
-        return request.state.user == "admin"
+        return "admin" in request.state.user["roles"]
 
 
 class HomeView(CustomView):

@@ -12,19 +12,19 @@ sqlmodel = "^0.0.8"
 uvicorn = "^0.20.0"
 Pillow = "^9.2.0"
 Markdown = "^3.4.1"
-sqlalchemy-file = "^0.1.5"
+sqlalchemy-file = "^0.2.0"
 itsdangerous = "^2.1.2"
 fasteners = "^0.18"
 pydantic = {extras = ["email"], version = "^1.10.2"}
-odmantic = "^0.9.0"
-starlette-admin = "^0.3.1"
+odmantic = "^0.9.1"
+starlette-admin = "0.5.0.dev0"
 
 
 [tool.poetry.dev-dependencies]
-black = "^22.10.0"
-isort = "^5.10.1"
+black = "^22.12.0"
+isort = "^5.11.2"
 mypy = "^0.991"
-autoflake = "^1.7.7"
+autoflake = "^2.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

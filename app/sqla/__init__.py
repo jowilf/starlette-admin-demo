@@ -5,6 +5,8 @@ from libcloud.storage.providers import get_driver
 from libcloud.storage.types import Provider
 from sqlalchemy_file.storage import StorageManager
 from sqlmodel import create_engine
+from starlette.middleware import Middleware
+from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 from starlette_admin import DropDown
 from starlette_admin.contrib.sqla import Admin as BaseAdmin
@@ -40,6 +42,7 @@ admin = Admin(
     login_logo_url="https://preview.tabler.io/static/logo.svg",
     index_view=HomeView(label="Home", icon="fa fa-home"),
     auth_provider=MyAuthProvider(login_path="/sign-in", logout_path="/sign-out"),
+    middlewares=[Middleware(SessionMiddleware, secret_key=config.secret)],
 )
 
 admin.add_view(UserView(User, icon="fa fa-users"))
