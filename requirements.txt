@@ -1,6 +1,6 @@
 aiofiles==22.1.0
 starlette==0.25.0
-starlette-admin==0.5.5
+starlette-admin[i18n]==0.6.0.dev5
 itsdangerous==2.1.2
 uvicorn==0.20.0
 sqlalchemy-file==0.4.0
