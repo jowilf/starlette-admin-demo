@@ -8,7 +8,8 @@ from sqlmodel import create_engine
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
-from starlette_admin import DropDown
+from starlette_admin import DropDown, I18nConfig
+from starlette_admin.i18n import SUPPORTED_LOCALES
 from starlette_admin.contrib.sqla import Admin as BaseAdmin
 from starlette_admin.views import Link
 
@@ -43,6 +44,7 @@ admin = Admin(
     index_view=HomeView(label="Home", icon="fa fa-home"),
     auth_provider=MyAuthProvider(login_path="/sign-in", logout_path="/sign-out"),
     middlewares=[Middleware(SessionMiddleware, secret_key=config.secret)],
+    i18n_config=I18nConfig(default_locale="en", language_switcher=SUPPORTED_LOCALES),
 )
 
 admin.add_view(UserView(User, icon="fa fa-users"))

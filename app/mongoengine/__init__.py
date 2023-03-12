@@ -1,10 +1,10 @@
 from mongoengine import connect
 from starlette_admin import DropDown
+from starlette_admin import I18nConfig
 from starlette_admin.contrib.mongoengine import Admin
 from starlette_admin.views import Link
 
 from app.config import config
-from app.mongoengine.fields import MoneyField
 from app.mongoengine.models import Category, Product
 from app.mongoengine.views import CategoryView, ProductView
 
@@ -19,6 +19,7 @@ admin = Admin(
     logo_url="https://preview.tabler.io/static/logo-white.svg",
     login_logo_url="https://preview.tabler.io/static/logo.svg",
     templates_dir="templates/admin/mongoengine",
+    i18n_config=I18nConfig(language_switcher=["en", "fr"]),
 )
 
 admin.add_view(

@@ -10,7 +10,7 @@ from starlette_admin import CustomView, EmailField, TagsField
 from starlette_admin.contrib.sqlmodel import ModelView
 from starlette_admin.exceptions import FormValidationError
 
-from app.sqla.fields import MarkdownField
+from app.sqla.fields import MarkdownField, CommentCounterField
 from app.sqla.models import Comment, Post, User
 
 
@@ -22,8 +22,17 @@ class UserView(ModelView):
         EmailField("username"),
         "avatar",
         "posts",
+        CommentCounterField("comments_counter", label="Number of Comments"),
         "comments",
     ]
+
+    # Only show the counter on list view
+    exclude_fields_from_list = ["comments"]
+    exclude_fields_from_create = ["comments_counter"]
+    exclude_fields_from_edit = ["comments_counter"]
+    exclude_fields_from_detail = ["comments_counter"]
+    # Sort by full_name asc and username desc by default
+    fields_default_sort = ["full_name", (User.username, True)]
 
     async def select2_result(self, obj: Any, request: Request) -> str:
         url = None

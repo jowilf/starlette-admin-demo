@@ -1,5 +1,6 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from odmantic.engine import AIOEngine
+from starlette_admin import I18nConfig
 from starlette_admin.contrib.odmantic import Admin, ModelView
 from starlette_admin.views import Link
 
@@ -21,6 +22,7 @@ admin = Admin(
     logo_url="https://preview.tabler.io/static/logo-white.svg",
     login_logo_url="https://preview.tabler.io/static/logo.svg",
     templates_dir="templates/admin/odmantic",
+    i18n_config=I18nConfig(default_locale="fr", language_switcher=["fr", "en"]),
 )
 
 admin.add_view(AuthorView(Author, icon="fa fa-users"))
