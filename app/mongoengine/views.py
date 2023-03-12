@@ -26,9 +26,12 @@ class ProductView(ModelView):
     exclude_fields_from_list = [Product.description]
     exclude_fields_from_create = ["created_at"]
     exclude_fields_from_edit = ["created_at"]
+    fields_default_sort = [(Product.price, True)]
 
 
 class CategoryView(ModelView):
+    fields_default_sort = ["name"]
+
     async def repr(self, obj: Any, request: Request) -> str:
         return obj.name
 
