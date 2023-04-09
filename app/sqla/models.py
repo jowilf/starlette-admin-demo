@@ -2,11 +2,13 @@ import enum
 from datetime import datetime
 from typing import List, Optional, Union
 
+from jinja2 import Template
 from pydantic import EmailStr
 from sqlalchemy import JSON, Column, DateTime, Enum, Text
 from sqlalchemy_file import File, ImageField
 from sqlalchemy_file.validators import SizeValidator
 from sqlmodel import Field, Relationship, SQLModel
+from starlette.requests import Request
 
 from app.helpers import UploadFile
 
@@ -37,6 +39,26 @@ class User(SQLModel, table=True):
     posts: List["Post"] = Relationship(back_populates="publisher")
     comments: List["Comment"] = Relationship(back_populates="user")
 
+    async def __admin_repr__(self, request: Request):
+        return self.full_name
+
+    async def __admin_select2_repr__(self, request: Request) -> str:
+        url = None
+        if self.avatar is not None:
+            storage, file_id = self.avatar.path.split("/")
+            url = request.url_for(
+                request.app.state.ROUTE_NAME + ":api:file",
+                storage=storage,
+                file_id=file_id,
+            )
+        template_str = (
+            '<div class="d-flex align-items-center"><span class="me-2 avatar'
+            ' avatar-xs"{% if url %} style="background-image:'
+            ' url({{url}});--tblr-avatar-size: 1.5rem;{%endif%}">{% if not url'
+            " %}obj.full_name[:2]{%endif%}</span>{{obj.full_name}} <div>"
+        )
+        return Template(template_str, autoescape=True).render(obj=self, url=url)
+
 
 class Post(SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
@@ -51,6 +73,13 @@ class Post(SQLModel, table=True):
     publisher: User = Relationship(back_populates="posts")
 
     comments: List["Comment"] = Relationship(back_populates="post")
+
+    async def __admin_select2_repr__(self, request: Request) -> str:
+        template_str = (
+            "<span><strong>Title: </strong>{{obj.title}}, <strong>Publish by:"
+            " </strong>{{obj.publisher.full_name}}</span>"
+        )
+        return Template(template_str, autoescape=True).render(obj=self)
 
 
 class Comment(SQLModel, table=True):

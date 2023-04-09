@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from odmantic import EmbeddedModel, Field, Model, Reference
 from pydantic import EmailStr
+from starlette.requests import Request
 
 
 class Address(EmbeddedModel):
@@ -17,6 +18,9 @@ class Author(Model):
     last_name: str = Field(min_length=3)
     email: Optional[EmailStr]
     addresses: List[Address] = Field(default_factory=list)
+
+    async def __admin_repr__(self, request: Request):
+        return f"{self.last_name} {self.first_name}"
 
 
 class BookFormat(str, Enum):

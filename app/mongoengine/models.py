@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-
+from starlette.requests import Request
 import mongoengine as me
 
 
@@ -29,3 +29,6 @@ class Product(me.Document):
 
 class Category(me.Document):
     name = me.StringField(min_length=3, unique=True)
+
+    def __admin_repr__(self, request: Request):
+        return self.name
