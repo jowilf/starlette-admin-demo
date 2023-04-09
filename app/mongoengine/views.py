@@ -1,5 +1,3 @@
-from typing import Any
-
 from starlette.requests import Request
 from starlette_admin.contrib.mongoengine import ModelView
 
@@ -31,9 +29,6 @@ class ProductView(ModelView):
 
 class CategoryView(ModelView):
     fields_default_sort = ["name"]
-
-    async def repr(self, obj: Any, request: Request) -> str:
-        return obj.name
 
     def can_delete(self, request: Request) -> bool:
         return False

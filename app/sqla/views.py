@@ -34,29 +34,9 @@ class UserView(ModelView):
     # Sort by full_name asc and username desc by default
     fields_default_sort = ["full_name", (User.username, True)]
 
-    async def select2_result(self, obj: Any, request: Request) -> str:
-        url = None
-        if obj.avatar is not None:
-            storage, file_id = obj.avatar.path.split("/")
-            url = request.url_for(
-                request.app.state.ROUTE_NAME + ":api:file",
-                storage=storage,
-                file_id=file_id,
-            )
-        template_str = (
-            '<div class="d-flex align-items-center"><span class="me-2 avatar'
-            ' avatar-xs"{% if url %} style="background-image:'
-            ' url({{url}});--tblr-avatar-size: 1.5rem;{%endif%}">{% if not url'
-            " %}obj.full_name[:2]{%endif%}</span>{{obj.full_name}} <div>"
-        )
-        return Template(template_str, autoescape=True).render(obj=obj, url=url)
-
     async def select2_selection(self, obj: Any, request: Request) -> str:
         template_str = "<span>{{obj.full_name}}</span>"
         return Template(template_str, autoescape=True).render(obj=obj)
-
-    async def repr(self, obj: Any, request: Request) -> str:
-        return obj.full_name
 
     def can_delete(self, request: Request) -> bool:
         return False
@@ -85,13 +65,6 @@ class PostView(ModelView):
         if data["publisher"] is None:
             raise FormValidationError({"publisher": "Can't add post without publisher"})
         return await super().validate(request, data)
-
-    async def select2_result(self, obj: Any, request: Request) -> str:
-        template_str = (
-            "<span><strong>Title: </strong>{{obj.title}}, <strong>Publish by:"
-            " </strong>{{obj.publisher.full_name}}</span>"
-        )
-        return Template(template_str, autoescape=True).render(obj=obj)
 
     def can_delete(self, request: Request) -> bool:
         return False
