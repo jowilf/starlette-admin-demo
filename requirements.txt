@@ -8,6 +8,6 @@ mongoengine==0.27.0
 Pillow==9.5.0
 Markdown==3.4.3
 sqlmodel==0.0.8
-pydantic[email]==1.10.9
+pydantic[email]==2.2.1
 PyMySQL==1.1.0
 odmantic==0.9.2
