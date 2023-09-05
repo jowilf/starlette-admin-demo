@@ -1,22 +1,7 @@
-{% extends "layout.html" %}
-{%set pk = model.pk_attr%}
-{% block header %}
-
-<div class="d-flex justify-content-end align-items-center">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item">
-            <a href="{{ url_for(__name__ ~ ':index')}}">Admin</a>
-        </li>
-        <li class="breadcrumb-item">
-            <a href="{{ url_for(__name__ ~ ':list', identity=model.identity)}}">Post</a>
-        </li>
-        <li class="breadcrumb-item active">Detail</li>
-    </ol>
-</div>
-{% endblock %} {% block modal %} {% include "modals/loading.html" %} {% include
-"modals/error.html" %} {% include "modals/delete.html" %} {% endblock %}
+{% extends "detail.html" %}
 {% block content %}
-<div class="container-fluid">
+    {#  Custom detail content #}
+    <div class="container-fluid">
     <div class="row">
         <div class="col-lg-8">
             <div class="card">
@@ -114,50 +99,4 @@
         </div>
     </div>
 </div>
-{% endblock %}
-{% block script %}
-<script type="text/javascript" src="{{ url_for(__name__ ~ ':statics', path='js/utils.js') }}"></script>
-
-<script>
-  $(function () {
-
-
-    $("#modal-delete-btn").click(function () {
-      $("#modal-delete").modal('hide');
-      $("#modal-loading").modal('show');
-      fetch("{{ url_for(__name__ ~ ':api', identity=model.identity)  | safe}}?pks={{obj[pk]}}", {
-        method: "DELETE",
-      }).then(async response => {
-        if (response.ok) {
-          await new Promise(r => setTimeout(r, 500));
-          $("#modal-loading").modal('hide')
-          window.location.replace("{{ url_for(__name__ ~ ':list', identity=model.identity)  | safe}}")
-        } else
-          return Promise.reject();
-
-      }).catch(async (error) => {
-        await new Promise(r => setTimeout(r, 500));
-        $("#modal-loading").modal('hide')
-        $("#modal-error").modal('show');
-      });
-    });
-  })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-</script>
 {% endblock %}
