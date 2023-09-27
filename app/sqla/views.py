@@ -63,7 +63,7 @@ class PostView(ModelView):
         doesn't validate relation fields by default
         """
         if data["publisher"] is None:
-            raise FormValidationError({"publisher": "Can't add post without publisher"})
+            raise FormValidationError({"publisher": "Publisher is required"})
         return await super().validate(request, data)
 
     def can_delete(self, request: Request) -> bool:
@@ -83,6 +83,20 @@ class CommentView(ModelView):
 
     def is_accessible(self, request: Request) -> bool:
         return "admin" in request.state.user["roles"]
+
+    async def validate(self, request: Request, data: Dict[str, Any]) -> None:
+        """
+        Add custom validation to validate `post` and `user` as SQLModel
+        doesn't validate relation fields by default
+        """
+        errors: Dict[str, str] = {}
+        if data["post"] is None:
+            errors["post"] = "Post is required"
+        if data["user"] is None:
+            errors["user"] = "User is required"
+        if len(errors) > 0:
+            raise FormValidationError(errors)
+        return await super().validate(request, data)
 
 
 class HomeView(CustomView):
