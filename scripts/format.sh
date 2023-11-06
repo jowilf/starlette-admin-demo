@@ -3,4 +3,4 @@
 set -e
 set -x
 ruff . --fix
-black .
+ruff format .
