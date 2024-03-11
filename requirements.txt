@@ -2,7 +2,7 @@ aiofiles==23.1.0
 starlette-admin[i18n]==0.13.0
 starlette==0.35.1
 itsdangerous==2.1.2
-uvicorn==0.25.0
+uvicorn==0.28.0
 sqlalchemy-file==0.6.0
 fasteners==0.19
 mongoengine==0.27.0
