@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List, Optional, Union
 
 from jinja2 import Template
-from pydantic import EmailStr
+from pydantic import EmailStr, validator
 from sqlalchemy import JSON, Column, DateTime, Enum, Text
 from sqlalchemy_file import File, ImageField
 from sqlalchemy_file.validators import SizeValidator
@@ -23,7 +23,8 @@ class User(SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
     full_name: str = Field(min_length=3, index=True)
     sex: Optional[str] = Field(
-        sa_column=Column(Enum(Gender)), default=Gender.UNKNOWN, index=True
+        sa_column=Column(Enum(Gender), index=True),
+        default=Gender.UNKNOWN,
     )
     username: EmailStr = Field(index=True)
     avatar: Union[File, UploadFile, None] = Field(
@@ -58,6 +59,24 @@ class User(SQLModel, table=True):
             " %}obj.full_name[:2]{%endif%}</span>{{obj.full_name}} <div>"
         )
         return Template(template_str, autoescape=True).render(obj=self, url=url)
+
+    @validator("full_name")
+    def validate_full_name(cls, value):
+        parts = value.split()
+
+        # Check if there are exactly two parts (first name and last name)
+        if len(parts) != 2:
+            raise ValueError(
+                "Full name should contain exactly two parts separated by a single space. Example: 'John Doe'"
+            )
+
+        # Check if both parts contain only alphabetic characters
+        if not all(part.isalpha() for part in parts):
+            raise ValueError(
+                "Each part of the full name should contain only alphabetic characters."
+            )
+
+        return value
 
 
 class Post(SQLModel, table=True):

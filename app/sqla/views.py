@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.templating import Jinja2Templates
-from starlette_admin import CustomView, EmailField, TagsField
+from starlette_admin import CustomView, EmailField, TagsField, RowActionsDisplayType
 from starlette_admin.contrib.sqlmodel import ModelView
 from starlette_admin.exceptions import FormValidationError
 
@@ -57,13 +57,16 @@ class PostView(ModelView):
     exclude_fields_from_edit = ["published_at"]
     detail_template = "post_detail.html"
 
+    sortable_fields = ["id", "title", "content", "published_at", "publisher"]
+    sortable_field_mapping = {"publisher": User.full_name}
+
     async def validate(self, request: Request, data: Dict[str, Any]) -> None:
         """
         Add custom validation to validate publisher as SQLModel
         doesn't validate relation fields by default
         """
         if data["publisher"] is None:
-            raise FormValidationError({"publisher": "Can't add post without publisher"})
+            raise FormValidationError({"publisher": "Publisher is required"})
         return await super().validate(request, data)
 
     def can_delete(self, request: Request) -> bool:
@@ -80,9 +83,24 @@ class CommentView(ModelView):
     exclude_fields_from_edit = ["created_at"]
     searchable_fields = [Comment.content, Comment.created_at]
     sortable_fields = [Comment.pk, Comment.content, Comment.created_at]
+    row_actions_display_type = RowActionsDisplayType.DROPDOWN
 
     def is_accessible(self, request: Request) -> bool:
         return "admin" in request.state.user["roles"]
+
+    async def validate(self, request: Request, data: Dict[str, Any]) -> None:
+        """
+        Add custom validation to validate `post` and `user` as SQLModel
+        doesn't validate relation fields by default
+        """
+        errors: Dict[str, str] = {}
+        if data["post"] is None:
+            errors["post"] = "Post is required"
+        if data["user"] is None:
+            errors["user"] = "User is required"
+        if len(errors) > 0:
+            raise FormValidationError(errors)
+        return await super().validate(request, data)
 
 
 class HomeView(CustomView):
