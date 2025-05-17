@@ -1,3 +1,5 @@
+import secrets
+
 from pydantic_settings import BaseSettings
 
 
@@ -7,7 +9,7 @@ class Config(BaseSettings):
     mongo_host: str = "mongodb://127.0.0.1:27017/"
     mongo_db: str = "demo"
     upload_dir: str = "upload/"
-    secret: str = "123456789"
+    secret: str = secrets.token_urlsafe(32)
     gtag: str | None = None
 
 
