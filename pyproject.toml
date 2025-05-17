@@ -1,0 +1,66 @@
+[project]
+name = "starlette-admin-demo"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115.12", # to use
+    "fasteners>=0.19",
+    "gunicorn>=23.0.0",
+    "itsdangerous>=2.2.0",
+    "markdown>=3.8",
+    "mongoengine>=0.29.1",
+    "odmantic>=1.0.2",
+    "pillow>=11.2.1",
+    "pydantic-settings>=2.9.1",
+    "pydantic[email]>=2.11.4",
+    "sqlalchemy-file>=0.6.0",
+    "sqlmodel>=0.0.24",
+    "starlette-admin[i18n]==0.15.0rc10",
+    "uvicorn-worker>=0.3.0",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "poethepoet>=0.34.0",
+    "pre-commit>=4.0.1",
+    "ruff>=0.7.1",
+    "uvicorn>=0.34.2",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+lint.select = [
+    "A",
+    "B",
+    "C",
+    "DTZ",
+    "E",
+    "EM",
+    "F",
+    "I",
+    "ICN",
+    "ISC",
+    "N",
+    "PLC",
+    "PLE",
+    "PLW",
+    "Q",
+    "RUF",
+    "S",
+    "T",
+    "TID",
+    "UP",
+    "W",
+    "YTT",
+]
+lint.ignore = ["RUF012", "EM101", "N805", "ISC001"]
+
+
+[tool.poe.tasks]
+format.sequence = ["ruff format", "ruff check . --fix"]
+format.default_item_type = "cmd"
+
+dev = "uv run -- uvicorn app.main:app --reload"

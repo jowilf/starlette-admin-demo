@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from jinja2 import Template
 from sqlalchemy import desc, func, select
@@ -6,11 +6,11 @@ from sqlalchemy.orm import Session
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.templating import Jinja2Templates
-from starlette_admin import CustomView, EmailField, TagsField, RowActionsDisplayType
+from starlette_admin import CustomView, EmailField, RowActionsDisplayType, TagsField
 from starlette_admin.contrib.sqlmodel import ModelView
 from starlette_admin.exceptions import FormValidationError
 
-from app.sqla.fields import MarkdownField, CommentCounterField
+from app.sqla.fields import CommentCounterField, MarkdownField
 from app.sqla.models import Comment, Post, User
 
 
@@ -60,7 +60,7 @@ class PostView(ModelView):
     sortable_fields = ["id", "title", "content", "published_at", "publisher"]
     sortable_field_mapping = {"publisher": User.full_name}
 
-    async def validate(self, request: Request, data: Dict[str, Any]) -> None:
+    async def validate(self, request: Request, data: dict[str, Any]) -> None:
         """
         Add custom validation to validate publisher as SQLModel
         doesn't validate relation fields by default
@@ -88,12 +88,12 @@ class CommentView(ModelView):
     def is_accessible(self, request: Request) -> bool:
         return "admin" in request.state.user["roles"]
 
-    async def validate(self, request: Request, data: Dict[str, Any]) -> None:
+    async def validate(self, request: Request, data: dict[str, Any]) -> None:
         """
         Add custom validation to validate `post` and `user` as SQLModel
         doesn't validate relation fields by default
         """
-        errors: Dict[str, str] = {}
+        errors: dict[str, str] = {}
         if data["post"] is None:
             errors["post"] = "Post is required"
         if data["user"] is None:
@@ -108,14 +108,8 @@ class HomeView(CustomView):
         session: Session = request.state.session
         stmt1 = select(Post).limit(10).order_by(desc(Post.published_at))
         stmt2 = (
-            select(User, func.count(Post.id).label("cnt"))
-            .limit(5)
-            .join(Post)
-            .group_by(User.id)
-            .order_by(desc("cnt"))
+            select(User, func.count(Post.id).label("cnt")).limit(5).join(Post).group_by(User.id).order_by(desc("cnt"))
         )
         posts = session.execute(stmt1).scalars().all()
         users = session.execute(stmt2).scalars().all()
-        return templates.TemplateResponse(
-            "home.html", {"request": request, "posts": posts, "users": users}
-        )
+        return templates.TemplateResponse("home.html", {"request": request, "posts": posts, "users": users})

@@ -1,0 +1,17 @@
+services:
+  starlette_admin_demo:
+    container_name: starlette_admin_demo
+    build: .
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      MONGO_HOST: mongodb://mongo:27017/
+      MONGO_URI: mongodb://mongo:27017/starlette_admin_demo
+      MONGO_DB: starlette_admin_demo
+      UPLOAD_DIR: assets/
+      SECRET: secret
+      ENGINE: sqlite:///demo.db?check_same_thread=false
+  mongo:
+    image: mongo
+    restart: always

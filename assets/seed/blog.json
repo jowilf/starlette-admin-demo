@@ -968,7 +968,8 @@
       "id": 63,
       "title": "Many people say that life isn't like a bed of roses.",
       "tags": [
-        "magical"
+        "magical",
+        "classic"
       ],
       "published_at": "2022-03-31T17:01:05",
       "publisher_id": 11
@@ -2822,7 +2823,7 @@
     },
     {
       "pk": 208,
-      "content": "Lit!",
+      "content": "Awesome!",
       "created_at": "2022-07-24T14:48:09",
       "post_id": 2,
       "user_id": 11

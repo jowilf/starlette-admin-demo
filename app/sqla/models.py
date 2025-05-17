@@ -1,16 +1,14 @@
 import enum
 from datetime import datetime
-from typing import List, Optional, Union
 
+from fastapi import UploadFile
 from jinja2 import Template
-from pydantic import EmailStr, validator
+from pydantic import ConfigDict, EmailStr, field_validator
 from sqlalchemy import JSON, Column, DateTime, Enum, Text
 from sqlalchemy_file import File, ImageField
 from sqlalchemy_file.validators import SizeValidator
 from sqlmodel import Field, Relationship, SQLModel
 from starlette.requests import Request
-
-from app.helpers import UploadFile
 
 
 class Gender(str, enum.Enum):
@@ -20,25 +18,28 @@ class Gender(str, enum.Enum):
 
 
 class User(SQLModel, table=True):
-    id: Optional[int] = Field(primary_key=True)
+    id: int | None = Field(None, primary_key=True)
     full_name: str = Field(min_length=3, index=True)
-    sex: Optional[str] = Field(
+    sex: str | None = Field(
         sa_column=Column(Enum(Gender), index=True),
         default=Gender.UNKNOWN,
     )
     username: EmailStr = Field(index=True)
-    avatar: Union[File, UploadFile, None] = Field(
+    avatar: File | UploadFile | None = Field(
+        None,
         sa_column=Column(
             ImageField(
                 upload_storage="user-avatar",
                 thumbnail_size=(128, 128),
                 validators=[SizeValidator(max_size="100k")],
             )
-        )
+        ),
     )
 
-    posts: List["Post"] = Relationship(back_populates="publisher")
-    comments: List["Comment"] = Relationship(back_populates="user")
+    posts: list["Post"] = Relationship(back_populates="publisher")
+    comments: list["Comment"] = Relationship(back_populates="user")
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     async def __admin_repr__(self, request: Request):
         return self.full_name
@@ -60,7 +61,8 @@ class User(SQLModel, table=True):
         )
         return Template(template_str, autoescape=True).render(obj=self, url=url)
 
-    @validator("full_name")
+    @field_validator("full_name", mode="before")
+    @classmethod
     def validate_full_name(cls, value):
         parts = value.split()
 
@@ -72,26 +74,22 @@ class User(SQLModel, table=True):
 
         # Check if both parts contain only alphabetic characters
         if not all(part.isalpha() for part in parts):
-            raise ValueError(
-                "Each part of the full name should contain only alphabetic characters."
-            )
+            raise ValueError("Each part of the full name should contain only alphabetic characters.")
 
         return value
 
 
 class Post(SQLModel, table=True):
-    id: Optional[int] = Field(primary_key=True)
+    id: int | None = Field(primary_key=True)
     title: str = Field(min_length=3)
     content: str = Field(sa_column=Column(Text))
-    tags: List[str] = Field(sa_column=Column(JSON), min_items=1, min_length=3)
-    published_at: Optional[datetime] = Field(
-        sa_column=Column(DateTime(timezone=True), default=datetime.utcnow)
-    )
+    tags: list[str] = Field(sa_column=Column(JSON), min_items=1, min_length=2)
+    published_at: datetime | None = Field(sa_column=Column(DateTime(timezone=True), default=datetime.utcnow))
 
-    publisher_id: Optional[int] = Field(foreign_key="user.id")
+    publisher_id: int | None = Field(foreign_key="user.id")
     publisher: User = Relationship(back_populates="posts")
 
-    comments: List["Comment"] = Relationship(back_populates="post")
+    comments: list["Comment"] = Relationship(back_populates="post")
 
     async def __admin_select2_repr__(self, request: Request) -> str:
         template_str = (
@@ -102,14 +100,12 @@ class Post(SQLModel, table=True):
 
 
 class Comment(SQLModel, table=True):
-    pk: Optional[int] = Field(primary_key=True)
+    pk: int | None = Field(primary_key=True)
     content: str = Field(sa_column=Column(Text), min_length=5)
-    created_at: Optional[datetime] = Field(
-        sa_column=Column(DateTime(timezone=True), default=datetime.utcnow)
-    )
+    created_at: datetime | None = Field(sa_column=Column(DateTime(timezone=True), default=datetime.utcnow))
 
-    post_id: Optional[int] = Field(foreign_key="post.id")
+    post_id: int | None = Field(foreign_key="post.id")
     post: Post = Relationship(back_populates="comments")
 
-    user_id: Optional[int] = Field(foreign_key="user.id")
+    user_id: int | None = Field(foreign_key="user.id")
     user: User = Relationship(back_populates="comments")

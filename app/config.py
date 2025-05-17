@@ -1,6 +1,4 @@
-from typing import Optional
-
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 
 
 class Config(BaseSettings):
@@ -10,7 +8,7 @@ class Config(BaseSettings):
     mongo_db: str = "demo"
     upload_dir: str = "upload/"
     secret: str = "123456789"
-    gtag: Optional[str] = None
+    gtag: str | None = None
 
 
 config = Config()

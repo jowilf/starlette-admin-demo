@@ -10,11 +10,11 @@ async def fill_database():
     data = json.load(open(get_assets("seed/books.json")))
     authors = []
     for _it in data["authors"]:
-        authors.append(Author.parse_obj(_it))
+        authors.append(Author.model_validate(_it))
     books = []
     for _it in data["books"]:
-        _it["author"] = random.choice(authors)
-        books.append(Book.parse_obj(_it))
+        _it["author"] = random.choice(authors)  # noqa: S311
+        books.append(Book.model_validate(_it))
     await engine.remove(Author)
     await engine.remove(Book)
     await engine.save_all(authors)

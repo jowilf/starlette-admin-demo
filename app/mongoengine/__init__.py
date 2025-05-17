@@ -1,6 +1,5 @@
 from mongoengine import connect
-from starlette_admin import DropDown
-from starlette_admin import I18nConfig
+from starlette_admin import DropDown, I18nConfig
 from starlette_admin.contrib.mongoengine import Admin
 from starlette_admin.views import Link
 
