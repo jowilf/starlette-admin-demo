@@ -3,8 +3,8 @@ services:
     container_name: starlette_admin_demo
     build: .
     restart: always
-    ports:
-      - "8000:8000"
+#    ports:
+#      - "8000:8000"
     environment:
       MONGO_HOST: mongodb://mongo:27017/
       MONGO_URI: mongodb://mongo:27017/starlette_admin_demo
