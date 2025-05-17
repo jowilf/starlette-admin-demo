@@ -12,7 +12,7 @@ Usage
 
 To run this project:
 
-1. Prerequisites
+### 1. Prerequisites
 
 Before you begin, make sure you have the following prerequisites installed:
 
@@ -20,32 +20,32 @@ Before you begin, make sure you have the following prerequisites installed:
 - [uv](https://docs.astral.sh/uv/)
 - [MongoDB](https://www.mongodb.com/)
 
-2. Clone the repository:
+### 2. Clone the repository
 
 ```shell
 git clone https://github.com/jowilf/starlette-admin-demo.git
 cd starlette-admin-demo
 ```
 
-2. Create and activate a virtual environment:
+### 3. Create and activate a virtual environment:
 
 ```shell
 uv venv --python 3.12
 ```
 
-3. Sync dependencies:
+### 4. Sync dependencies
 
 ```shell
 uv sync
 ```
 
-4. Create mock data:
+### 5. Create mock data:
 
 ```shell
 uv run seed.py
 ```
 
-5. Run the application:
+### 6. Run the application:
 
 ```shell
 uv run -- uvicorn app.main:app --reload
