@@ -1,5 +1,3 @@
-from typing import Optional
-
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette_admin.auth import AdminUser, AuthProvider
@@ -35,11 +33,9 @@ class MyAuthProvider(AuthProvider):
     ) -> Response:
         if len(username) < 3:
             """Form data validation"""
-            raise FormValidationError(
-                {"username": "Ensure username has at least 03 characters"}
-            )
+            raise FormValidationError({"username": "Ensure username has at least 03 characters"})
 
-        if username in users and password == "password":
+        if username in users and password == "password":  # noqa: S105
             """Save `username` in session"""
             request.session.update({"username": username})
             return response
@@ -57,7 +53,7 @@ class MyAuthProvider(AuthProvider):
 
         return False
 
-    def get_admin_user(self, request: Request) -> Optional[AdminUser]:
+    def get_admin_user(self, request: Request) -> AdminUser | None:
         user = request.state.user  # Retrieve current user
         photo_url = None
         if user["avatar"] is not None:

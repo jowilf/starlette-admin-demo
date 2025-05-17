@@ -6,12 +6,21 @@ main features of *Starlette-Admin*
 
 Available online [here][2]
 
+
 Usage
 -----
 
 To run this project:
 
-1. Clone the repository:
+1. Prerequisites
+
+Before you begin, make sure you have the following prerequisites installed:
+
+- [Python 3](https://www.python.org/downloads/)
+- [uv](https://docs.astral.sh/uv/)
+- [MongoDB](https://www.mongodb.com/)
+
+2. Clone the repository:
 
 ```shell
 git clone https://github.com/jowilf/starlette-admin-demo.git
@@ -21,30 +30,24 @@ cd starlette-admin-demo
 2. Create and activate a virtual environment:
 
 ```shell
-python3 -m venv env
-source env/bin/activate
+uv venv --python 3.12
 ```
 
-3. Install requirements:
+3. Sync dependencies:
 
 ```shell
-pip install -r 'requirements.txt'
-```
-
-4. Create and Fill database:
-
-```shell
-python seed.py
+uv sync
 ```
 
 5. Run the application:
 
 ```shell
-uvicorn app.main:app
+uv run -- uvicorn app.main:app --reload
 ```
 
 Then access the application in your browser at the given URL (<https://localhost:8000> by default).
 
 
 [1]: https://github.com/jowilf/starlette-admin/
+
 [2]: https://starlette-admin-demo.jowilf.com/

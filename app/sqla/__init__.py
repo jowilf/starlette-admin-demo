@@ -1,5 +1,4 @@
 import os
-from typing import Optional
 
 from libcloud.storage.providers import get_driver
 from libcloud.storage.types import Provider
@@ -9,8 +8,8 @@ from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 from starlette_admin import DropDown, I18nConfig
-from starlette_admin.i18n import SUPPORTED_LOCALES
 from starlette_admin.contrib.sqla import Admin as BaseAdmin
+from starlette_admin.i18n import SUPPORTED_LOCALES
 from starlette_admin.views import Link
 
 from app.config import config
@@ -25,11 +24,11 @@ os.makedirs(f"{config.upload_dir}/avatars", 0o777, exist_ok=True)
 container = get_driver(Provider.LOCAL)(config.upload_dir).get_container("avatars")
 StorageManager.add_storage("user-avatar", container)
 
-engine = create_engine(config.sqla_engine)
+engine = create_engine(config.sqla_engine, echo=True)
 
 
 class Admin(BaseAdmin):
-    def custom_render_js(self, request: Request) -> Optional[str]:
+    def custom_render_js(self, request: Request) -> str | None:
         return request.url_for("statics", path="js/custom_render.js")
 
 

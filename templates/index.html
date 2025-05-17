@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
     <title>Starlette Admin Demo</title>
-    <link rel="stylesheet" href="{{ url_for('admin-sqla:statics', path='css/tabler.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('admin-sqla:statics', path='css/tabler.min-1.1.0.css') }}">
     <link rel="stylesheet" href="{{ url_for('admin-sqla:statics', path='css/fontawesome.min.css') }}">
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
@@ -36,6 +36,7 @@
     <div class="page-body">
         <div class="container-xl">
             <h1>Starlette Admin Demo</h1>
+            <p class="text-muted">Based on <strong>starlette-admin {{ starlette_admin_version }}</strong></p>
             <p class="text-muted">
                 A demo project to showcase Starlette Admin features.<br>
                 This project has multiple admin, click on <strong>Browse admin</strong> button to navigate
@@ -112,6 +113,6 @@
 </div>
 <script type="text/javascript" src="{{ url_for('statics', path='js/vendor/masonry.min.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('admin-sqla:statics', path='js/vendor/jquery.min.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('admin-sqla:statics', path='js/vendor/tabler.min.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('admin-sqla:statics', path='js/vendor/tabler.min-1.1.0.js') }}"></script>
 </body>
 </html>

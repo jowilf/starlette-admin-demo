@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List
+from typing import Any
 
 from sqlalchemy.orm import Session
 from sqlalchemy_file import File
@@ -11,22 +11,21 @@ from app.sqla import engine
 from app.sqla.models import Comment, Post, User
 
 
-def read_users(data: List[Dict[str, Any]]) -> List[User]:
+def read_users(data: list[dict[str, Any]]) -> list[User]:
     return [
-        User(
-            **value,
-            avatar=File(open(get_assets(f"images/avatar{(i % 5) + 1}.jpg"), "rb")),
+        User.model_validate(
+            {**value, "avatar": File(open(get_assets(f"images/avatar{(i % 5) + 1}.jpg"), "rb"))},
         )
         for (i, value) in enumerate(data)
     ]
 
 
-def read_posts(data: List[Dict[str, Any]]) -> List[Post]:
-    return [Post(**value, content=DUMMY_POST) for value in data]
+def read_posts(data: list[dict[str, Any]]) -> list[Post]:
+    return [Post.model_validate({**value, "content": DUMMY_POST}) for value in data]
 
 
-def read_comments(data: List[Dict[str, Any]]) -> List[Comment]:
-    return [Comment(**value) for value in data]
+def read_comments(data: list[dict[str, Any]]) -> list[Comment]:
+    return [Comment.model_validate(value) for value in data]
 
 
 def clear_storage():

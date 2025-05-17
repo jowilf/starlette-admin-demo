@@ -11,7 +11,7 @@ from app.mongoengine.models import Category, Dimension, Product, Unit
 async def fill_database():
     connection.drop_database(config.mongo_db)
     data = json.load(open(get_assets("seed/store.json")))
-    categories = dict()
+    categories = {}
     for name in data["categories"]:
         categories[name] = Category(name=name)
     Category.objects.insert(categories.values())
@@ -22,9 +22,9 @@ async def fill_database():
             description=value["description"],
             price=value["price"],
             dimension=Dimension(
-                width=random.randint(10, 100),
-                height=random.randint(10, 100),
-                unit=list(Unit)[random.randint(0, 2)],
+                width=random.randint(10, 100),  # noqa: S311
+                height=random.randint(10, 100),  # noqa: S311
+                unit=list(Unit)[random.randint(0, 2)],  # noqa: S311
             ),
             created_at=datetime.fromisoformat(value["created_at"]),
             category=Category.objects(name=value["category_name"]).get(),

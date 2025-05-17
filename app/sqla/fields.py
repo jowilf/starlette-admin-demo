@@ -3,7 +3,7 @@ from typing import Any
 from markdown import markdown
 from markupsafe import Markup
 from starlette.requests import Request
-from starlette_admin import RequestAction, TextAreaField, StringField
+from starlette_admin import RequestAction, StringField, TextAreaField
 
 from app.sqla import User
 
@@ -13,9 +13,7 @@ class MarkdownField(TextAreaField):
     Example of custom field to render markdown content on detail page
     """
 
-    async def serialize_value(
-        self, request: Request, value: Any, action: RequestAction
-    ) -> Any:
+    async def serialize_value(self, request: Request, value: Any, action: RequestAction) -> Any:
         if action == RequestAction.DETAIL:
             return markdown(Markup.escape(value))
         return await super().serialize_value(request, value, action)
@@ -30,6 +28,5 @@ class CommentCounterField(StringField):
     It's important to exclude this fields from create and edit
     """
 
-    async def parse_obj(self, request: Request, obj: Any) -> Any:
-        assert isinstance(obj, User)
+    async def parse_obj(self, request: Request, obj: User) -> Any:
         return len(obj.comments)

@@ -10,9 +10,7 @@ class MoneyField(DecimalField):
     Listing page, detail page and select2 AJAX request.
     """
 
-    async def serialize_value(
-        self, request: Request, value: Any, action: RequestAction
-    ) -> Any:
+    async def serialize_value(self, request: Request, value: Any, action: RequestAction) -> Any:
         if action != RequestAction.EDIT:
             """Return formatted value for API, LIST and VIEW,"""
             return f"${value}"
