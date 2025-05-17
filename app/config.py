@@ -10,7 +10,7 @@ class Config(BaseSettings):
     mongo_db: str = "demo"
     upload_dir: str = "upload/"
     secret: str = secrets.token_urlsafe(32)
-    gtag: str | None = None
+    gtag: str = "G-VHZ5PF37EK"
 
 
 config = Config()
