@@ -10,7 +10,6 @@ services:
       MONGO_URI: mongodb://mongo:27017/starlette_admin_demo
       MONGO_DB: starlette_admin_demo
       UPLOAD_DIR: assets/
-      SECRET: secret
       ENGINE: sqlite:///demo.db?check_same_thread=false
   mongo:
     image: mongo
