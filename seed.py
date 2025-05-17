@@ -1,4 +1,5 @@
 # ruff: noqa: T201
+import asyncio
 
 from app.mongoengine.seed import fill_database as fill_mongo_database
 from app.odmantic.seed import fill_database as fill_odm_database
@@ -15,3 +16,7 @@ async def fill_database() -> None:
     print("Start filling Odmantic database")
     await fill_odm_database()
     print("End filling Odmantic database")
+
+
+if __name__ == "__main__":
+    asyncio.run(fill_database())

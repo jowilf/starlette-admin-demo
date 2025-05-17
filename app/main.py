@@ -7,7 +7,6 @@ from starlette_admin import __version__ as starlette_admin_version
 from app.config import config
 from app.mongoengine import admin as admin_mongo
 from app.odmantic import admin as admin_odm
-from app.seed import fill_database
 from app.sqla import admin as admin_sqla
 
 
@@ -21,8 +20,7 @@ app = Starlette(
     routes=[
         Route("/", homepage),
         Mount("/statics", app=StaticFiles(directory="statics"), name="statics"),
-    ],
-    on_startup=[fill_database],
+    ]
 )
 admin_sqla.mount_to(app)
 admin_mongo.mount_to(app)

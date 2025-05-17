@@ -64,3 +64,4 @@ format.sequence = ["ruff format", "ruff check . --fix"]
 format.default_item_type = "cmd"
 
 dev = "uv run -- uvicorn app.main:app --reload"
+seed = "uv run seed.py"

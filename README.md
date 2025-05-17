@@ -39,6 +39,12 @@ uv venv --python 3.12
 uv sync
 ```
 
+4. Create mock data:
+
+```shell
+uv run seed.py
+```
+
 5. Run the application:
 
 ```shell

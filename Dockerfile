@@ -7,4 +7,4 @@ COPY . .
 
 RUN uv sync --frozen --no-dev
 
-CMD ["uv", "run", "--", "uvicorn", "app.main:app", "--workers", "8", "--forwarded-allow-ips", "*", "--proxy-headers"]
+CMD ["uv", "run", "--", "gunicorn", "app.main:app", "-w", "8", "-k", "uvicorn_worker.UvicornWorker", "-b", "0.0.0.0:8000", "--forwarded-allow-ips", "*"]
