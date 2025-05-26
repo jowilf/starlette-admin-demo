@@ -17,7 +17,7 @@ dependencies = [
     "pydantic[email]>=2.11.4",
     "sqlalchemy-file>=0.6.0",
     "sqlmodel>=0.0.24",
-    "starlette-admin[i18n]==0.15.0",
+    "starlette-admin[i18n]==0.15.1",
     "uvicorn-worker>=0.3.0",
 ]
 
