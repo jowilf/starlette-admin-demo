@@ -27,7 +27,7 @@ services:
       MYSQL_USER: demo
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
     volumes:
-      # - mysql_data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
       - type: bind
         source: ./db-init/umami-init.sql
         target: /docker-entrypoint-initdb.d/umami-init.sql
@@ -76,8 +76,8 @@ services:
       timeout: 5s
       retries: 10
 
-# volumes:
-#   mysql_data:
+volumes:
+  mysql_data:
 
 secrets:
   github_token:
