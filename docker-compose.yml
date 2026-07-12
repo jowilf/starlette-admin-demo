@@ -8,9 +8,19 @@ services:
     restart: always
     environment:
       UPLOAD_DIR: uploads/
-      ENGINE: sqlite:///demo.db?check_same_thread=false
+      ENGINE: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}@mysql:3306/demo
       APP_ENV: PROD
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
+    depends_on:
+      - mysql
+
+  mysql:
+    container_name: mysql
+    image: mysql:8
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
+      MYSQL_DATABASE: demo
 
 secrets:
   github_token:
