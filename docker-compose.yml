@@ -28,7 +28,13 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
     volumes:
       # - mysql_data:/var/lib/mysql
-      - ./db-init:/docker-entrypoint-initdb.d:ro
+      - type: bind
+        source: ./db-init/umami-init.sql
+        target: /docker-entrypoint-initdb.d/umami-init.sql
+        content: |
+          CREATE DATABASE IF NOT EXISTS umami;
+          GRANT ALL PRIVILEGES ON umami.* TO 'demo'@'%';
+          FLUSH PRIVILEGES;
     healthcheck:
       test:
         - CMD
