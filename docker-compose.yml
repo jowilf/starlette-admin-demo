@@ -19,7 +19,7 @@ services:
 
   mysql:
     container_name: mysql
-    image: mysql:8.4.10
+    image: mysql:7
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
