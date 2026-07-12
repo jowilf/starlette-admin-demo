@@ -12,7 +12,8 @@ services:
       APP_ENV: PROD
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
 
   mysql:
     container_name: mysql
@@ -23,6 +24,19 @@ services:
       MYSQL_DATABASE: demo
       MYSQL_USER: demo
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
+    healthcheck:
+      test:
+        - CMD
+        - mysqladmin
+        - ping
+        - -h
+        - localhost
+        - -u
+        - demo
+        - -p${MYSQL_PASSWORD}
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 secrets:
   github_token:
