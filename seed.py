@@ -16,7 +16,7 @@ other entity's volume is `round(base_count * scale)`, see `BASE_COUNTS` and
 `scaled_counts()`. `scale` is the single knob that controls how much data
 comes out, and turning it up always means more of everything.
 
-About 70% of employees get an avatar copied from `assets/avatar01.png` to
+About 20% of employees get an avatar copied from `assets/avatar01.png` to
 `assets/avatar07.png`, each written to its own file under
 `uploads/avatars/`, so a large `--scale` run writes many image files.
 """
@@ -313,11 +313,11 @@ def build_employee(
         department=department,
     )
 
-    # Avatar rule: draw 1 to 10; 1 to 7 attaches assets/avatar0<n>.png, 8 to
-    # 10 leaves the employee without one (the UI falls back to initials).
+    # Avatar rule: draw 1 to 10; 1 to 2 attaches a random assets/avatar0<n>.png,
+    # 3 to 10 leaves the employee without one (the UI falls back to initials).
     roll = rng.randint(1, 10)
-    if roll <= 7:
-        asset, dims = avatar_assets[roll - 1]
+    if roll <= 2:
+        asset, dims = rng.choice(avatar_assets)
         employee.avatar = attach_avatar(asset, dims)
     return employee
 
