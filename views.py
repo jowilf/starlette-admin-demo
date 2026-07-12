@@ -16,6 +16,7 @@ from typing import Any
 
 import anyio
 from config import avatars_storage
+from markupsafe import escape
 from fields import (
     AvatarNameField,
     DollarField,
@@ -106,12 +107,16 @@ class ModelView(BaseModelView):
         return not self._is_reader(request)
 
     async def is_action_allowed(self, request, name):
-        return not self._is_reader(request) and super().is_action_allowed(request, name)
+        if self._is_reader(request):
+            return False
+        return await super().is_action_allowed(request, name)
 
     async def is_row_action_allowed(self, request, name):
-        return not self._is_reader(request) and super().is_row_action_allowed(
-            request, name
-        )
+        # Readers keep the read-only "view" row action; everything else is
+        # write-shaped and stays admin-only.
+        if self._is_reader(request) and name != "view":
+            return False
+        return await super().is_row_action_allowed(request, name)
 
 
 class SoftDeleteModelView(ModelView):
@@ -201,7 +206,7 @@ class DepartmentView(ModelView):
         return f"""
         <form>
             <div class="mt-3">
-                <label class="form-label">New budget for {obj.name}</label>
+                <label class="form-label">New budget for {escape(obj.name)}</label>
                 <input type="number" class="form-control" name="new_budget"
                        value="{obj.budget:.2f}" step="0.01">
             </div>
@@ -393,7 +398,7 @@ class EmployeeView(SoftDeleteModelView):
             session: Session = request.state.session
             query = select(Employee.id).where(Employee.email == email)
             pk = request.query_params.get("pk")
-            if pk is not None:
+            if pk is not None and pk.isdigit():
                 query = query.where(Employee.id != int(pk))
             if session.execute(query).first() is not None:
                 errors["email"] = "An employee with this email already exists."

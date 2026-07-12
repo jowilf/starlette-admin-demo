@@ -28,8 +28,6 @@ from models import (
 )
 from starlette.applications import Starlette
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import HTMLResponse
-from starlette.routing import Route
 from starlette_admin import DropDown
 from starlette_admin.contrib.sqla import Admin
 from starlette_admin.export import ExportConfig
@@ -54,9 +52,7 @@ async def lifespan(_: Starlette):
     yield
 
 
-app = FastAPI(
-    lifespan=lifespan
-)
+app = FastAPI(lifespan=lifespan)
 
 admin = Admin(
     engine,
