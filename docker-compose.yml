@@ -1,10 +1,17 @@
 services:
   starlette_admin_demo:
     container_name: starlette_admin_demo
-    build: .
+    build:
+      context: .
+      secrets:
+        - github_token
     restart: always
     environment:
       UPLOAD_DIR: uploads/
       ENGINE: sqlite:///demo.db?check_same_thread=false
       APP_ENV: PROD
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
+
+secrets:
+  github_token:
+    environment: GITHUB_TOKEN
