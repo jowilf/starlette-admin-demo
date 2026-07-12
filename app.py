@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from auth import MyAuthProvider
-from config import SECRET_KEY, engine
+from config import SECRET_KEY, UMAMI_HOST, UMAMI_WEBSITE_ID, engine
 from dashboard import HRDashboardView
 from models import (
     Base,
@@ -68,6 +68,10 @@ admin = Admin(
     import_config=ImportConfig(max_upload_size=1 * 1024),  # 1 KB
     export_config=ExportConfig(max_rows=10),
 )
+
+# Consumed by templates/base.html to inject the Umami tracking script.
+admin.templates.env.globals["umami_host"] = UMAMI_HOST
+admin.templates.env.globals["umami_website_id"] = UMAMI_WEBSITE_ID
 
 admin.add_view(DepartmentView(Department, icon="fa fa-sitemap"))
 admin.add_view(EmployeeView(Employee, icon="fa fa-id-badge"))

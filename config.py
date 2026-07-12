@@ -26,3 +26,7 @@ if not DATABASE_URL.startswith("sqlite"):
 
 engine = create_engine(DATABASE_URL, **_engine_kwargs)
 avatars_storage = LocalStorage(base_dir=UPLOAD_DIR)
+
+# Page-view analytics via self-hosted Umami
+UMAMI_HOST = os.getenv("UMAMI_HOST")
+UMAMI_WEBSITE_ID = os.getenv("UMAMI_WEBSITE_ID")

@@ -1,0 +1,10 @@
+{% extends "@starlette-admin/base.html" %}
+{% block head %}
+    {{ super() }}
+    {# Umami page-view analytics: only injected once UMAMI_HOST / UMAMI_WEBSITE_ID are configured, see config.py #}
+    {% if umami_host and umami_website_id %}
+        <script defer
+                src="{{ umami_host }}/script.js"
+                data-website-id="{{ umami_website_id }}"></script>
+    {% endif %}
+{% endblock %}

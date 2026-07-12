@@ -11,6 +11,8 @@ services:
       ENGINE: mysql+pymysql://demo:${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}@mysql:3306/demo
       APP_ENV: PROD
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
+      UMAMI_HOST: ${UMAMI_HOST:-}
+      UMAMI_WEBSITE_ID: ${UMAMI_WEBSITE_ID:-}
     depends_on:
       mysql:
         condition: service_healthy
@@ -24,6 +26,10 @@ services:
       MYSQL_DATABASE: demo
       MYSQL_USER: demo
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
+      UMAMI_DB_PASSWORD: ${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test:
         - CMD
@@ -47,6 +53,26 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+
+  umami:
+    container_name: umami
+    image: ghcr.io/umami-software/umami:mysql-latest
+    restart: always
+    environment:
+      DATABASE_URL: mysql://umami:${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set}@mysql:3306/umami
+      DATABASE_TYPE: mysql
+      APP_SECRET: ${UMAMI_APP_SECRET:?UMAMI_APP_SECRET must be set}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/heartbeat || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mysql_data:
 
 secrets:
   github_token:
