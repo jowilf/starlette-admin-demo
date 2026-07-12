@@ -21,16 +21,13 @@ services:
     container_name: mysql
     image: mysql:8
     restart: always
-    command: ["--mysql-native-password=ON"]
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
       MYSQL_DATABASE: demo
       MYSQL_USER: demo
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
-      UMAMI_DB_PASSWORD: ${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set}
-    volumes:
-      # - mysql_data:/var/lib/mysql
-      - ./db-init:/docker-entrypoint-initdb.d:ro
+    # volumes:
+    #   - mysql_data:/var/lib/mysql
     healthcheck:
       test:
         - CMD
@@ -60,7 +57,7 @@ services:
     image: ghcr.io/umami-software/umami:mysql-latest
     restart: always
     environment:
-      DATABASE_URL: mysql://umami:${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set}@mysql:3306/umami
+      DATABASE_URL: mysql://demo:${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}@mysql:3306/demo
       DATABASE_TYPE: mysql
       APP_SECRET: ${UMAMI_APP_SECRET:?UMAMI_APP_SECRET must be set}
     depends_on:
