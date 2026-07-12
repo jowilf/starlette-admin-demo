@@ -6,6 +6,8 @@ services:
       secrets:
         - github_token
     restart: always
+    ports:
+      - "8000:8000"
     environment:
       UPLOAD_DIR: uploads/
       ENGINE: sqlite:///demo.db?check_same_thread=false
