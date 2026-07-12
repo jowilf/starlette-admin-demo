@@ -38,6 +38,16 @@ services:
       timeout: 5s
       retries: 10
 
+  adminer:
+    container_name: adminer
+    image: adminer
+    restart: always
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+
 secrets:
   github_token:
     environment: GITHUB_TOKEN
