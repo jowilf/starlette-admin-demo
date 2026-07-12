@@ -489,14 +489,6 @@ def build_expense(
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-def _sqlite_file(engine) -> Path | None:
-    """The on-disk file behind a SQLite engine, or None for other backends."""
-    url = engine.url
-    if url.get_backend_name() != "sqlite" or not url.database:
-        return None
-    return Path(url.database)
-
-
 def seed(config: SeedConfig) -> None:
     rng = random.Random(config.seed)
     Faker.seed(config.seed)
@@ -505,11 +497,9 @@ def seed(config: SeedConfig) -> None:
     started = time.perf_counter()
 
     engine = app_engine
-    db_path = _sqlite_file(engine)
 
     if config.reset:
-        if db_path is not None:
-            db_path.unlink(missing_ok=True)
+        Base.metadata.drop_all(engine)
         for stale in (avatars_storage.base_dir / AVATAR_UPLOAD_FOLDER).glob("*"):
             stale.unlink()
 
@@ -606,8 +596,7 @@ def seed(config: SeedConfig) -> None:
 
     elapsed = time.perf_counter() - started
     total = len(ORG_CHART) + sum(counts.values())
-    destination = db_path if db_path is not None else engine.url
-    print(f"Done: {total} records created in {elapsed:.1f}s -> {destination}")
+    print(f"Done: {total} records created in {elapsed:.1f}s -> {engine.url}")
 
 
 def main() -> None:
