@@ -14,9 +14,10 @@ from `get_context`, and declare vendor scripts in `additional_js_links` so
 the page injects them once, after the built-in bundles.
 
 Every number on the page is queried live from the request's SQLAlchemy
-session. Aggregates that bucket rows by month or year rely on SQLite's
-`strftime`; port those expressions if you move the example to another
-database.
+session. Aggregates that bucket rows by month or year format dates in SQL
+via `_sql_date_format`, which picks the right function for the connected
+database (SQLite's `strftime` or MySQL's `DATE_FORMAT`); extend it if you
+move the example to another database.
 """
 
 from calendar import monthrange
@@ -43,6 +44,7 @@ from models import (
     TaskStatus,
     Timesheet,
 )
+from config import engine
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from starlette.requests import Request
@@ -148,11 +150,23 @@ def _fmt_money(value: Any) -> str:
     return f"${amount:.0f}"
 
 
+def _sql_date_format(fmt: str, column: Any) -> Any:
+    """A SQL expression formatting a date column with `%Y`/`%m` specifiers.
+
+    SQLite and MySQL agree on the format specifiers but not on the function:
+    SQLite has `strftime(fmt, col)`, MySQL has `DATE_FORMAT(col, fmt)`.
+    """
+    if engine.dialect.name == "mysql":
+        return func.date_format(column, fmt)
+    return func.strftime(fmt, column)
+
+
 def _last_months(count: int) -> list[tuple[str, str]]:
     """The last `count` calendar months, oldest first.
 
-    Returns (key, label) pairs where `key` matches SQLite's
-    `strftime('%Y-%m', ...)` output and `label` is a short axis caption.
+    Returns (key, label) pairs where `key` matches the
+    `_sql_date_format('%Y-%m', ...)` output and `label` is a short axis
+    caption.
     """
     year, month = date.today().year, date.today().month
     months: list[tuple[str, str]] = []
@@ -258,7 +272,7 @@ class HRDashboardView(CustomView):
         )
         billable_this_month = session.scalar(
             select(func.coalesce(func.sum(Timesheet.hours), 0)).where(
-                func.strftime("%Y-%m", Timesheet.date) == today.strftime("%Y-%m"),
+                _sql_date_format("%Y-%m", Timesheet.date) == today.strftime("%Y-%m"),
                 Timesheet.is_billable.is_(True),
             )
         )
@@ -793,7 +807,8 @@ class HRDashboardView(CustomView):
         session: Session = request.state.session
         total = session.scalar(
             select(func.coalesce(func.sum(Timesheet.hours), 0)).where(
-                func.strftime("%Y-%m", Timesheet.date) == date.today().strftime("%Y-%m")
+                _sql_date_format("%Y-%m", Timesheet.date)
+                == date.today().strftime("%Y-%m")
             )
         )
         return f"{total:.0f}h"
@@ -823,7 +838,7 @@ class HRDashboardView(CustomView):
     async def _hires_sparkline(self, request: Request) -> list[dict[str, Any]]:
         session: Session = request.state.session
         months = _last_months(12)
-        month_expr = func.strftime("%Y-%m", Employee.hire_date)
+        month_expr = _sql_date_format("%Y-%m", Employee.hire_date)
         counts = dict(
             session.execute(
                 select(month_expr, func.count(Employee.id))
@@ -839,7 +854,7 @@ class HRDashboardView(CustomView):
     async def _hours_sparkline(self, request: Request) -> list[dict[str, Any]]:
         session: Session = request.state.session
         months = _last_months(12)
-        month_expr = func.strftime("%Y-%m", Timesheet.date)
+        month_expr = _sql_date_format("%Y-%m", Timesheet.date)
         totals = dict(
             session.execute(
                 select(month_expr, func.sum(Timesheet.hours))
@@ -917,7 +932,7 @@ class HRDashboardView(CustomView):
 
     async def _hires_per_year(self, request: Request) -> list[dict[str, Any]]:
         session: Session = request.state.session
-        year_expr = func.strftime("%Y", Employee.hire_date)
+        year_expr = _sql_date_format("%Y", Employee.hire_date)
         counts = dict(
             session.execute(
                 select(year_expr, func.count(Employee.id))
@@ -1015,7 +1030,7 @@ class HRDashboardView(CustomView):
     async def _hours_per_month(self, request: Request) -> list[dict[str, Any]]:
         session: Session = request.state.session
         months = _last_months(12)
-        month_expr = func.strftime("%Y-%m", Timesheet.date)
+        month_expr = _sql_date_format("%Y-%m", Timesheet.date)
         rows = session.execute(
             select(month_expr, Timesheet.is_billable, func.sum(Timesheet.hours))
             .where(month_expr >= months[0][0])
@@ -1039,7 +1054,7 @@ class HRDashboardView(CustomView):
     async def _billable_share(self, request: Request) -> list[float]:
         session: Session = request.state.session
         months = _last_months(12)
-        month_expr = func.strftime("%Y-%m", Timesheet.date)
+        month_expr = _sql_date_format("%Y-%m", Timesheet.date)
         total = session.scalar(
             select(func.coalesce(func.sum(Timesheet.hours), 0)).where(
                 month_expr >= months[0][0]
