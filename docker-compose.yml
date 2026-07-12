@@ -28,7 +28,7 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
       UMAMI_DB_PASSWORD: ${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set}
     volumes:
-      - mysql_data:/var/lib/mysql
+      # - mysql_data:/var/lib/mysql
       - ./db-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test:
