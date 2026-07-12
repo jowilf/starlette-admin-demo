@@ -19,9 +19,8 @@ services:
 
   mysql:
     container_name: mysql
-    image: mysql:8
+    image: mysql:8.4.10
     restart: always
-    command: ["--mysql-native-password=ON"]
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
       MYSQL_DATABASE: demo
@@ -72,8 +71,8 @@ services:
       timeout: 5s
       retries: 10
 
-volumes:
-  mysql_data:
+# volumes:
+#   mysql_data:
 
 secrets:
   github_token:
