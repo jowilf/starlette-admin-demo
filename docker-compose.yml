@@ -21,6 +21,7 @@ services:
     container_name: mysql
     image: mysql:8
     restart: always
+    command: ["--mysql-native-password=ON"]
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
       MYSQL_DATABASE: demo
