@@ -88,6 +88,7 @@ class ModelView(BaseModelView):
     row_actions_display_type = RowActionsDisplayType.KEBAB
     row_actions_position = RowActionsPosition.AFTER_COLUMNS
     show_goto_page = True
+    search_auto_submit = True
 
     @staticmethod
     def _is_reader(request: Request) -> bool:
