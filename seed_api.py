@@ -11,14 +11,23 @@ it's a signed double-submit cookie. A `GET` response sets a signed
 that same signed value back via an `X-CSRFToken` header (or a `csrftoken`
 form field). So every write below follows the same two-step shape: `GET`
 the page first (establishes/confirms the cookie), then `POST` with the
-cookie's value copied into the `X-CSRFToken` header. See
-`AdminApiClient._request` for the one place that pattern lives.
+cookie's value copied into the `X-CSRFToken` header -- see
+`AdminApiClient._csrf_headers` plus `create`/`edit`/`bulk_action`, which are
+the only three places that issue a mutating request.
 
 New rows don't come back with their id in the response body (a create POST
 redirects to the list page). Instead, this submits the framework's own
 `_continue_editing` form field alongside every create, which redirects to
 `/{key}/edit?pk=<new pk>` instead -- the pk is then just read off the
 `Location` header (see `AdminApiClient.create`).
+
+Concurrency: department creation is strictly sequential (a child's
+`parent=` needs its parent's pk to already exist), but every other entity
+is an independent row once its own dependencies are already baked into its
+payload. Data generation itself (the seeded `random.Random` / `Faker`
+calls) always happens single-threaded and in order first, so a run's output
+depends only on `--seed`, never on how far `--concurrency` fans the actual
+HTTP requests out -- see `AdminApiClient.create_many`.
 
 Employees and projects are soft-deletable (`SoftDeleteMixin` /
 `SoftDeleteModelView`, see models.py / views.py): once a row is soft-deleted,
@@ -30,6 +39,7 @@ every entity that might reference an employee or project already exists.
 Usage:
     uv run seed_api.py                       # against http://127.0.0.1:8000
     uv run seed_api.py --base-url http://localhost:8000 --scale 0.2
+    uv run seed_api.py --concurrency 16       # more requests in flight
     uv run seed_api.py --no-reset             # append instead of wiping first
 
 The target app must already be running. Schema reset (`--reset`, the
@@ -41,8 +51,10 @@ there is no admin endpoint for wiping the database, so that one step isn't
 import argparse
 import random
 import re
+import threading
 import time
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -78,17 +90,38 @@ AVATAR_UPLOAD_FOLDER = "avatars"
 
 CSRF_COOKIE_NAME = "starlette_admin_csrftoken"
 CSRF_HEADER_NAME = "X-CSRFToken"
+DEFAULT_CONCURRENCY = 8
 
 
 # ── HTTP client ──────────────────────────────────────────────────────────────
 
 
 class AdminApiClient:
-    """Talks to the running admin the same way a logged-in browser would."""
+    """Talks to the running admin the same way a logged-in browser would.
 
-    def __init__(self, base_url: str, username: str, password: str) -> None:
+    Login and the department pass run one request at a time. Everything
+    after that -- employees, projects, tasks, timesheets, leave requests,
+    expenses -- is a batch of independent rows, so `create_many`/`edit_many`
+    fan those out across a thread pool. `httpx.Client` pools connections and
+    is safe to share across threads; the csrf cookie is stable for the rest
+    of the run once `_login` sets it (no later response re-issues it, see
+    `CSRFMiddleware.dispatch`), so concurrent readers of `self.http.cookies`
+    never race a writer.
+    """
+
+    def __init__(
+        self,
+        base_url: str,
+        username: str,
+        password: str,
+        concurrency: int = DEFAULT_CONCURRENCY,
+    ) -> None:
+        self.concurrency = concurrency
+        limits = httpx.Limits(
+            max_connections=concurrency + 4, max_keepalive_connections=concurrency
+        )
         self.http = httpx.Client(
-            base_url=base_url, follow_redirects=False, timeout=30.0
+            base_url=base_url, follow_redirects=False, timeout=30.0, limits=limits
         )
         self._login(username, password)
 
@@ -131,12 +164,42 @@ class AdminApiClient:
         query = parse_qs(urlsplit(response.headers["location"]).query)
         return query["pk"][0]
 
+    def create_many(
+        self,
+        key: str,
+        payloads: list[tuple[dict[str, Any], dict[str, Any] | None]],
+        label: str | None = None,
+    ) -> list[str]:
+        """`create` a batch of independent rows concurrently, returning
+        their pks in the same order as `payloads`.
+        """
+        total = len(payloads)
+        completed = 0
+        lock = threading.Lock()
+
+        def _one(item: tuple[dict[str, Any], dict[str, Any] | None]) -> str:
+            nonlocal completed
+            data, files = item
+            pk = self.create(key, data, files)
+            if label:
+                with lock:
+                    completed += 1
+                    if completed % 25 == 0 or completed == total:
+                        print(f"\r  {label}: {completed}/{total}", end="", flush=True)
+            return pk
+
+        with ThreadPoolExecutor(max_workers=self.concurrency) as pool:
+            results = list(pool.map(_one, payloads))
+        if label:
+            print()
+        return results
+
     def edit(self, key: str, pk: str, data: dict[str, Any]) -> None:
         """POST the full field set for an existing row to `/{key}/edit?pk=`.
 
         Unlike a PATCH, this replaces every field the view exposes, so
-        callers must resend the complete payload (see the department
-        headcount backfill in `seed_via_api`), not just the changed field.
+        callers must resend the complete payload, not just the changed
+        field (see the department headcount backfill in `seed_via_api`).
         """
         self.http.get(f"/{key}/edit", params={"pk": pk})
         response = self.http.post(
@@ -149,6 +212,11 @@ class AdminApiClient:
             raise RuntimeError(
                 f"edit {key}#{pk} failed: {response.status_code} {response.text[:500]}"
             )
+
+    def edit_many(self, key: str, items: list[tuple[str, dict[str, Any]]]) -> None:
+        """`edit` a batch of independent rows concurrently."""
+        with ThreadPoolExecutor(max_workers=self.concurrency) as pool:
+            list(pool.map(lambda item: self.edit(key, *item), items))
 
     def bulk_action(self, key: str, name: str, pks: list[str]) -> None:
         """POST a batch action (e.g. the built-in "delete") for a list of pks."""
@@ -408,13 +476,6 @@ def build_expense_data(
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-def _progress(label: str, i: int, total: int) -> None:
-    if (i + 1) % 50 == 0 or i + 1 == total:
-        print(f"\r  {label}: {i + 1}/{total}", end="", flush=True)
-    if i + 1 == total:
-        print()
-
-
 def seed_via_api(client: AdminApiClient, config: SeedConfig) -> None:
     rng = random.Random(config.seed)
     Faker.seed(config.seed)
@@ -431,9 +492,10 @@ def seed_via_api(client: AdminApiClient, config: SeedConfig) -> None:
             stale.unlink()
     Base.metadata.create_all(app_engine)
 
-    # Departments: sequential, parent before child, same constraint as
-    # seed.py -- a child's `parent=` needs the parent's pk, which only
-    # exists once that parent's create request has already come back.
+    # Departments: sequential, parent before child -- a child's `parent=`
+    # needs the parent's pk, which only exists once that parent's create
+    # request has already come back, so this one pass can't fan out like
+    # everything below it.
     children_of: dict[str | None, list[str]] = defaultdict(list)
     for name, parent_name, _color in ORG_CHART:
         children_of[parent_name].append(name)
@@ -451,11 +513,12 @@ def seed_via_api(client: AdminApiClient, config: SeedConfig) -> None:
     leaf_names = [n for n in department_pks if not children_of[n]]
     parent_names = [n for n in department_pks if children_of[n]]
 
-    # Employees
-    employee_pks: list[str] = []
-    dept_headcount: Counter[str] = Counter()
-    total_employees = counts["employees"]
-    for i in range(total_employees):
+    # Employees: payloads are built one at a time (rng/Faker aren't
+    # thread-safe, and a run must stay reproducible for a given --seed),
+    # then every create fans out across the thread pool.
+    employee_payloads: list[tuple[dict[str, Any], dict[str, Any] | None]] = []
+    department_choices: list[str] = []
+    for i in range(counts["employees"]):
         department_name = pick_department(rng, leaf_names, parent_names)
         data, avatar_asset = build_employee_data(
             rng, fake, i, department_pks[department_name]
@@ -465,64 +528,84 @@ def seed_via_api(client: AdminApiClient, config: SeedConfig) -> None:
             files = {
                 "avatar": (avatar_asset.name, avatar_asset.read_bytes(), "image/png")
             }
-        employee_pks.append(client.create("employee", clean(data), files=files))
-        dept_headcount[department_name] += 1
-        _progress("employees", i, total_employees)
+        employee_payloads.append((clean(data), files))
+        department_choices.append(department_name)
+    employee_pks = client.create_many("employee", employee_payloads, label="employees")
+    dept_headcount = Counter(department_choices)
 
     # Real headcount, now that every employee has a department. Full-form
     # edit, since `/{key}/edit` replaces every field the view exposes.
     for name, payload in department_payloads.items():
         payload["headcount"] = dept_headcount.get(name, 0)
-        client.edit("department", department_pks[name], clean(payload))
+    client.edit_many(
+        "department",
+        [
+            (department_pks[name], clean(payload))
+            for name, payload in department_payloads.items()
+        ],
+    )
 
     # Projects
-    project_pks: list[str] = []
     all_department_pks = list(department_pks.values())
-    total_projects = counts["projects"]
-    for i in range(total_projects):
-        data = build_project_data(rng, fake, i, rng.choice(all_department_pks))
-        project_pks.append(client.create("project", clean(data)))
-        _progress("projects", i, total_projects)
+    project_payloads = [
+        (clean(build_project_data(rng, fake, i, rng.choice(all_department_pks))), None)
+        for i in range(counts["projects"])
+    ]
+    project_pks = client.create_many("project", project_payloads, label="projects")
 
-    # Tasks
-    task_refs: list[tuple[str, str]] = []  # (task_pk, project_pk)
-    total_tasks = counts["tasks"]
-    for i in range(total_tasks):
-        project_pk = rng.choice(project_pks)
-        data = build_task_data(rng, fake, project_pk, employee_pks)
-        task_pk = client.create("task", clean(data))
-        task_refs.append((task_pk, project_pk))
-        _progress("tasks", i, total_tasks)
+    # Tasks: the project each task belongs to is picked up front too, so the
+    # (task_pk, project_pk) pairs `build_timesheet_data` needs can be
+    # reassembled after the concurrent batch comes back in payload order.
+    task_project_choices = [rng.choice(project_pks) for _ in range(counts["tasks"])]
+    task_payloads = [
+        (clean(build_task_data(rng, fake, project_pk, employee_pks)), None)
+        for project_pk in task_project_choices
+    ]
+    task_pks = client.create_many("task", task_payloads, label="tasks")
+    task_refs = list(zip(task_pks, task_project_choices))
 
     # Timesheets
-    total_timesheets = counts["timesheets"]
-    for i in range(total_timesheets):
-        data = build_timesheet_data(rng, fake, employee_pks, project_pks, task_refs)
-        client.create("timesheet", clean(data))
-        _progress("timesheets", i, total_timesheets)
+    timesheet_payloads = [
+        (
+            clean(
+                build_timesheet_data(rng, fake, employee_pks, project_pks, task_refs)
+            ),
+            None,
+        )
+        for _ in range(counts["timesheets"])
+    ]
+    client.create_many("timesheet", timesheet_payloads, label="timesheets")
 
     # Leave requests
-    total_leave = counts["leave_requests"]
-    for i in range(total_leave):
-        data = build_leave_request_data(rng, fake, employee_pks)
-        client.create("leave-request", clean(data))
-        _progress("leave requests", i, total_leave)
+    leave_payloads = [
+        (clean(build_leave_request_data(rng, fake, employee_pks)), None)
+        for _ in range(counts["leave_requests"])
+    ]
+    client.create_many("leave-request", leave_payloads, label="leave requests")
 
     # Expenses
-    total_expenses = counts["expenses"]
-    for i in range(total_expenses):
-        data = build_expense_data(rng, fake, i, employee_pks, project_pks)
-        client.create("expense", clean(data))
-        _progress("expenses", i, total_expenses)
+    expense_payloads = [
+        (clean(build_expense_data(rng, fake, i, employee_pks, project_pks)), None)
+        for i in range(counts["expenses"])
+    ]
+    client.create_many("expense", expense_payloads, label="expenses")
 
     # Soft-delete a small slice last: SoftDeleteModelView.get_detail_query
     # hides a deleted row, and every relation resolves through the target
     # view's find_by_pk, so deleting any earlier would break creates that
     # still needed to reference these employees/projects.
     deleted_employees = rng.sample(employee_pks, k=max(1, len(employee_pks) // 50))
-    client.bulk_action("employee", "delete", deleted_employees)
     deleted_projects = rng.sample(project_pks, k=max(1, len(project_pks) // 25))
-    client.bulk_action("project", "delete", deleted_projects)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        list(
+            pool.map(
+                lambda args: client.bulk_action(*args),
+                [
+                    ("employee", "delete", deleted_employees),
+                    ("project", "delete", deleted_projects),
+                ],
+            )
+        )
 
     elapsed = time.perf_counter() - started
     total = len(ORG_CHART) + sum(counts.values())
@@ -560,6 +643,15 @@ def main() -> None:
         help="Random seed for reproducible data (default: %(default)s).",
     )
     parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=DEFAULT_CONCURRENCY,
+        help="Requests to run in flight at once for the independent-row "
+        "batches (employees, projects, tasks, timesheets, leave requests, "
+        "expenses). Departments always go one at a time, since each parent "
+        "must exist before its children. (default: %(default)s).",
+    )
+    parser.add_argument(
         "--no-reset",
         dest="reset",
         action="store_false",
@@ -567,7 +659,9 @@ def main() -> None:
         "(unique fields like email/slug may then collide across runs).",
     )
     args = parser.parse_args()
-    client = AdminApiClient(args.base_url, args.username, args.password)
+    client = AdminApiClient(
+        args.base_url, args.username, args.password, concurrency=args.concurrency
+    )
     seed_via_api(
         client,
         SeedConfig(scale=args.scale, seed=args.seed, reset=args.reset),
