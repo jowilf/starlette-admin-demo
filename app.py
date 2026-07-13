@@ -65,7 +65,7 @@ admin = Admin(
     auth_provider=MyAuthProvider(),
     # Deliberately strict, low limits to make the "capacity exceeded"
     # errors easy to trigger and demo.
-    import_config=ImportConfig(max_upload_size=1 * 1024),  # 1 KB
+    import_config=ImportConfig(max_upload_size=1 * 1024, max_rows=10),  # 1 KB
     export_config=ExportConfig(max_rows=10),
 )
 
