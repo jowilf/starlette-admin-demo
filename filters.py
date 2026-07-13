@@ -1,12 +1,7 @@
-"""Custom filter implementations for the HR example.
-
-`RelationField`s only get null-check filters by default (see
-`SqlaFilterRegistry.relation_filters`), since there is no generic way to
-compare a related row to a raw string. These give the Employee list's
-`department` field an equality and a substring match against the related
-`Department.name`, joining through the relationship rather than comparing a
-foreign key value the admin user would not otherwise see, plus an "is one
-of" / "is not one of" pair backed by a dropdown listing every department.
+"""Custom filters. `RelationField`s only get null-checks by default, so
+these add substring/equality matches against `Department.name` and an
+"is one of"/"is not one of" pair backed by a department dropdown, for the
+Employee list's `department` field.
 """
 
 from typing import Any
@@ -38,9 +33,8 @@ class DepartmentContainsFilter(BaseFilter):
 
 class _DepartmentChoicesMixin:
     """Shared `get_choices`/`parse_value` for the two filters below: the
-    filter builder's dropdown lists every department by name, and posts back
-    the department's `id` rather than its name, so `apply` can match on the
-    primary key instead of an `ilike` comparison.
+    dropdown lists departments by name but posts back `id`, so `apply`
+    matches on the primary key.
     """
 
     def get_choices(self, request: Request) -> list[tuple[int, str]]:
@@ -70,9 +64,7 @@ class DepartmentInFilter(_DepartmentChoicesMixin, InFilter):
 
 
 class DepartmentNotInFilter(_DepartmentChoicesMixin, NotInFilter):
-    """Employees not in any of the selected departments, including employees
-    with no department at all.
-    """
+    """Employees not in any selected department, including those with none."""
 
     name = "department_not_in"
     label = "is not one of"

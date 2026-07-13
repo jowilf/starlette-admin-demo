@@ -1,40 +1,22 @@
-"""Seed the 07-hr example through the running admin's own HTTP endpoints.
+"""Seed the 07-hr example through the running admin's own HTTP endpoints,
+unlike `seed.py` which writes straight to the database. Drives the real
+create/edit forms over HTTP, including login and CSRF, as a browser would.
 
-Unlike `seed.py` (which writes straight to the database through SQLAlchemy),
-this script drives the same data through `app.py`'s actual create/edit forms
-over HTTP, exactly as a browser would. That means going through login and
-`starlette_admin`'s CSRF protection on every mutating request.
+CSRF is a signed double-submit cookie (`CSRFMiddleware`): `GET` sets it,
+`POST` must echo it back via `X-CSRFToken` - see `_csrf_headers` and
+`create`/`edit`/`bulk_action`. Create doesn't return the new pk in the body,
+so every create submits `_continue_editing` to redirect to
+`/{key}/edit?pk=<new pk>` instead, and the pk is read off `Location`.
 
-CSRF, concretely (see `starlette_admin.security.csrf.CSRFMiddleware`):
-it's a signed double-submit cookie. A `GET` response sets a signed
-`starlette_admin_csrftoken` cookie; any mutating request (`POST`) must echo
-that same signed value back via an `X-CSRFToken` header (or a `csrftoken`
-form field). So every write below follows the same two-step shape: `GET`
-the page first (establishes/confirms the cookie), then `POST` with the
-cookie's value copied into the `X-CSRFToken` header -- see
-`AdminApiClient._csrf_headers` plus `create`/`edit`/`bulk_action`, which are
-the only three places that issue a mutating request.
+Department creation is strictly sequential (a child's `parent=` needs its
+parent's pk); everything else fans out across a thread pool once its
+payload's dependencies are baked in. Data generation itself is always
+single-threaded, so a run's output depends only on `--seed`, never on
+`--concurrency` (see `create_many`).
 
-New rows don't come back with their id in the response body (a create POST
-redirects to the list page). Instead, this submits the framework's own
-`_continue_editing` form field alongside every create, which redirects to
-`/{key}/edit?pk=<new pk>` instead -- the pk is then just read off the
-`Location` header (see `AdminApiClient.create`).
-
-Concurrency: department creation is strictly sequential (a child's
-`parent=` needs its parent's pk to already exist), but every other entity
-is an independent row once its own dependencies are already baked into its
-payload. Data generation itself (the seeded `random.Random` / `Faker`
-calls) always happens single-threaded and in order first, so a run's output
-depends only on `--seed`, never on how far `--concurrency` fans the actual
-HTTP requests out -- see `AdminApiClient.create_many`.
-
-Employees and projects are soft-deletable (`SoftDeleteMixin` /
-`SoftDeleteModelView`, see models.py / views.py): once a row is soft-deleted,
-`SoftDeleteModelView.get_detail_query` hides it, and any later create that
-tries to reference it as a relation (e.g. a task's assignee) would fail to
-resolve. So, unlike seed.py, the soft-delete pass here runs last, after
-every entity that might reference an employee or project already exists.
+Employees/projects are soft-deletable, so unlike seed.py the soft-delete
+pass runs last here - deleting earlier would break later creates that
+still need to reference those rows as relations.
 
 Usage:
     uv run seed_api.py                       # against http://127.0.0.1:8000
@@ -42,10 +24,9 @@ Usage:
     uv run seed_api.py --concurrency 16       # more requests in flight
     uv run seed_api.py --no-reset             # append instead of wiping first
 
-The target app must already be running. Schema reset (`--reset`, the
-default) still goes straight through SQLAlchemy first, same as seed.py:
-there is no admin endpoint for wiping the database, so that one step isn't
-"through the API" -- every row after it is.
+The target app must already be running. Schema reset (`--reset`, default)
+still goes straight through SQLAlchemy, same as seed.py - there's no admin
+endpoint for wiping the database.
 """
 
 import argparse
@@ -99,14 +80,10 @@ DEFAULT_CONCURRENCY = 8
 class AdminApiClient:
     """Talks to the running admin the same way a logged-in browser would.
 
-    Login and the department pass run one request at a time. Everything
-    after that -- employees, projects, tasks, timesheets, leave requests,
-    expenses -- is a batch of independent rows, so `create_many`/`edit_many`
-    fan those out across a thread pool. `httpx.Client` pools connections and
-    is safe to share across threads; the csrf cookie is stable for the rest
-    of the run once `_login` sets it (no later response re-issues it, see
-    `CSRFMiddleware.dispatch`), so concurrent readers of `self.http.cookies`
-    never race a writer.
+    Login and departments run one request at a time; everything else fans
+    out across a thread pool via `create_many`/`edit_many`. Safe to share
+    `httpx.Client` across threads: the csrf cookie is set once by `_login`
+    and never reissued, so concurrent readers never race a writer.
     """
 
     def __init__(
@@ -171,8 +148,7 @@ class AdminApiClient:
         label: str | None = None,
     ) -> list[str]:
         """`create` a batch of independent rows concurrently, returning
-        their pks in the same order as `payloads`.
-        """
+        their pks in `payloads` order."""
         total = len(payloads)
         completed = 0
         lock = threading.Lock()
@@ -196,11 +172,8 @@ class AdminApiClient:
 
     def edit(self, key: str, pk: str, data: dict[str, Any]) -> None:
         """POST the full field set for an existing row to `/{key}/edit?pk=`.
-
-        Unlike a PATCH, this replaces every field the view exposes, so
-        callers must resend the complete payload, not just the changed
-        field (see the department headcount backfill in `seed_via_api`).
-        """
+        Replaces every field the view exposes, so callers must resend the
+        complete payload, not just the changed field."""
         self.http.get(f"/{key}/edit", params={"pk": pk})
         response = self.http.post(
             f"/{key}/edit",
@@ -251,9 +224,8 @@ def _to_form_value(value: Any) -> Any:
 
 def clean(data: dict[str, Any]) -> dict[str, Any]:
     """Convert a raw payload dict to the strings starlette_admin's form
-    fields expect, dropping keys whose value is None (omitted, rather than
-    submitted empty, so optional relations/dates parse to None -- see e.g.
-    `RelationField.parse_form_data` and `DateField.parse_form_data`)."""
+    fields expect, dropping None values so optional relations/dates parse
+    to None instead of empty strings."""
     cleaned = {k: _to_form_value(v) for k, v in data.items()}
     return {k: v for k, v in cleaned.items() if v is not None}
 
@@ -294,9 +266,8 @@ def build_employee_data(
     skills = rng.sample(SKILLS, k=rng.randint(0, 6))
 
     hire_date = fake.date_between(start_date="-12y")
-    # EmployeeView.validate() rejects a date_of_birth less than 16 years
-    # before hire_date. Going through days (rather than replacing the year,
-    # which can hit Feb 29) keeps this simple and always well past the cutoff.
+    # EmployeeView.validate() requires date_of_birth >=16y before hire_date;
+    # using days avoids a Feb 29 replace-the-year edge case.
     years_before_hire = rng.randint(16, 60)
     date_of_birth = hire_date - timedelta(
         days=round(years_before_hire * 365.25) + rng.randint(0, 364)
@@ -450,10 +421,9 @@ def build_expense_data(
     employee_pks: list[str],
     project_pks: list[str],
 ) -> dict[str, Any]:
-    # Lines are only reachable as an inline of the create/edit form (there is
-    # no standalone `/expense-line/create`), so this leaves them out and lets
-    # `ExpenseView.after_create_committed` recompute `total_amount` as 0 --
-    # a documented simplification versus seed.py, which writes lines directly.
+    # No standalone `/expense-line/create` endpoint, so lines are left out
+    # here; `total_amount` recomputes to 0 via after_create_committed
+    # (unlike seed.py, which writes lines directly).
     status = pick(rng, EXPENSE_STATUSES)
     data: dict[str, Any] = {
         "employee": rng.choice(employee_pks),
@@ -492,10 +462,8 @@ def seed_via_api(client: AdminApiClient, config: SeedConfig) -> None:
             stale.unlink()
     Base.metadata.create_all(app_engine)
 
-    # Departments: sequential, parent before child -- a child's `parent=`
-    # needs the parent's pk, which only exists once that parent's create
-    # request has already come back, so this one pass can't fan out like
-    # everything below it.
+    # Departments: sequential, parent before child - a child's `parent=`
+    # needs the parent's pk from its already-returned create request.
     children_of: dict[str | None, list[str]] = defaultdict(list)
     for name, parent_name, _color in ORG_CHART:
         children_of[parent_name].append(name)
@@ -513,9 +481,8 @@ def seed_via_api(client: AdminApiClient, config: SeedConfig) -> None:
     leaf_names = [n for n in department_pks if not children_of[n]]
     parent_names = [n for n in department_pks if children_of[n]]
 
-    # Employees: payloads are built one at a time (rng/Faker aren't
-    # thread-safe, and a run must stay reproducible for a given --seed),
-    # then every create fans out across the thread pool.
+    # Employees: payloads built one at a time (rng/Faker aren't thread-safe;
+    # a run must stay reproducible for a given --seed), then created concurrently.
     employee_payloads: list[tuple[dict[str, Any], dict[str, Any] | None]] = []
     department_choices: list[str] = []
     for i in range(counts["employees"]):
@@ -533,8 +500,8 @@ def seed_via_api(client: AdminApiClient, config: SeedConfig) -> None:
     employee_pks = client.create_many("employee", employee_payloads, label="employees")
     dept_headcount = Counter(department_choices)
 
-    # Real headcount, now that every employee has a department. Full-form
-    # edit, since `/{key}/edit` replaces every field the view exposes.
+    # Real headcount now that every employee has a department. Full-form
+    # edit since `/{key}/edit` replaces every field the view exposes.
     for name, payload in department_payloads.items():
         payload["headcount"] = dept_headcount.get(name, 0)
     client.edit_many(
@@ -553,9 +520,8 @@ def seed_via_api(client: AdminApiClient, config: SeedConfig) -> None:
     ]
     project_pks = client.create_many("project", project_payloads, label="projects")
 
-    # Tasks: the project each task belongs to is picked up front too, so the
-    # (task_pk, project_pk) pairs `build_timesheet_data` needs can be
-    # reassembled after the concurrent batch comes back in payload order.
+    # Project picked up front so (task_pk, project_pk) pairs can be
+    # reassembled once the concurrent batch returns, in payload order.
     task_project_choices = [rng.choice(project_pks) for _ in range(counts["tasks"])]
     task_payloads = [
         (clean(build_task_data(rng, fake, project_pk, employee_pks)), None)
@@ -590,10 +556,8 @@ def seed_via_api(client: AdminApiClient, config: SeedConfig) -> None:
     ]
     client.create_many("expense", expense_payloads, label="expenses")
 
-    # Soft-delete a small slice last: SoftDeleteModelView.get_detail_query
-    # hides a deleted row, and every relation resolves through the target
-    # view's find_by_pk, so deleting any earlier would break creates that
-    # still needed to reference these employees/projects.
+    # Runs last: a deleted row is hidden from find_by_pk, so deleting
+    # earlier would break creates that still needed to reference it.
     deleted_employees = rng.sample(employee_pks, k=max(1, len(employee_pks) // 50))
     deleted_projects = rng.sample(project_pks, k=max(1, len(project_pks) // 25))
     with ThreadPoolExecutor(max_workers=2) as pool:

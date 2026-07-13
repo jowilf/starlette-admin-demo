@@ -1,23 +1,14 @@
-"""
-07-hr: dashboard index view.
+"""Dashboard index view. `HRDashboardView` replaces the admin's default index
+with stock widgets plus one custom widget, `OrgChartWidget`, which renders
+the department hierarchy with ApexTree.
 
-`HRDashboardView` replaces the admin's default index page with an HR
-dashboard built from the stock widget set (StatWidget, ChartWidget,
-TableWidget, TabsWidget, ...) plus one custom widget defined here:
-`OrgChartWidget`, which renders the department hierarchy with ApexTree,
-the organizational chart library from the ApexCharts team.
+`OrgChartWidget` is the reference for writing your own: subclass
+`BaseWidget`, point `template` at a file under `templates_dir`, return
+context from `get_context`, and declare vendor scripts in `additional_js_links`.
 
-`OrgChartWidget` is the reference for writing your own widget: subclass
-`BaseWidget`, point `template` at a file under the app's `templates_dir`
-(see `templates/widgets/org_chart_widget.html`), return template variables
-from `get_context`, and declare vendor scripts in `additional_js_links` so
-the page injects them once, after the built-in bundles.
-
-Every number on the page is queried live from the request's SQLAlchemy
-session. Aggregates that bucket rows by month or year format dates in SQL
-via `_sql_date_format`, which picks the right function for the connected
-database (SQLite's `strftime` or MySQL's `DATE_FORMAT`); extend it if you
-move the example to another database.
+Every number is queried live from the request's session. Month/year
+aggregates format dates via `_sql_date_format`, which picks the right SQL
+function per database - extend it to support another one.
 """
 
 from calendar import monthrange
@@ -65,14 +56,12 @@ from starlette_admin import (
 )
 from starlette_admin.widgets import BaseWidget
 
-# Pinned to 1.3.0 on purpose: it is the last release without a license
-# gate, so the chart renders without an ApexCharts watermark. The API used
-# here (contentKey, nodeTemplate, per node nodeBGColor) is stable across
-# 1.x, so bumping the version only requires a license key, not new code.
+# Pinned to 1.3.0: last release without a license gate (no watermark). The
+# API used here is stable across 1.x, so upgrading needs a license key only.
 APEXTREE_JS = "https://cdn.jsdelivr.net/npm/apextree@1.3.0/apextree.min.js"
 
-# Colorblind safe categorical palette, assigned to series in this fixed
-# order. Validated for adjacent pair CVD separation on a white card surface.
+# Colorblind-safe categorical palette; order is fixed (assigned to series in
+# this order) and validated for adjacent-pair CVD separation.
 CATEGORICAL = [
     "#2a78d6",  # blue
     "#1baf7a",  # aqua
@@ -84,9 +73,8 @@ CATEGORICAL = [
     "#eb6834",  # orange
 ]
 
-# Status colors mirror the semantics of the Tabler badges used in the list
-# views: green for settled good states, amber for waiting states, red for
-# rejections, gray for inert states, blue and violet for informative ones.
+# Mirrors the Tabler badge semantics used in the list views: green=settled
+# good, amber=waiting, red=rejected, gray=inert, blue/violet=informative.
 GOOD = "#0ca30c"
 WARNING = "#fab219"
 CRITICAL = "#d03b3b"
@@ -151,23 +139,16 @@ def _fmt_money(value: Any) -> str:
 
 
 def _sql_date_format(fmt: str, column: Any) -> Any:
-    """A SQL expression formatting a date column with `%Y`/`%m` specifiers.
-
-    SQLite and MySQL agree on the format specifiers but not on the function:
-    SQLite has `strftime(fmt, col)`, MySQL has `DATE_FORMAT(col, fmt)`.
-    """
+    """Format a date column with `%Y`/`%m` specifiers, dialect-agnostic:
+    SQLite's `strftime(fmt, col)` vs MySQL's `DATE_FORMAT(col, fmt)`."""
     if engine.dialect.name == "mysql":
         return func.date_format(column, fmt)
     return func.strftime(fmt, column)
 
 
 def _last_months(count: int) -> list[tuple[str, str]]:
-    """The last `count` calendar months, oldest first.
-
-    Returns (key, label) pairs where `key` matches the
-    `_sql_date_format('%Y-%m', ...)` output and `label` is a short axis
-    caption.
-    """
+    """Last `count` calendar months, oldest first, as (key, label) pairs;
+    `key` matches `_sql_date_format('%Y-%m', ...)` output."""
     year, month = date.today().year, date.today().month
     months: list[tuple[str, str]] = []
     for _ in range(count):
@@ -188,10 +169,9 @@ def _last_months(count: int) -> list[tuple[str, str]]:
 class OrgChartWidget(BaseWidget):
     """Renders a hierarchy as an interactive ApexTree organization chart.
 
-    The widget is data source agnostic: `tree_callback` returns the nested
-    node structure ApexTree consumes. Each node needs an `id`, a `children`
-    list, and a `data` payload with the strings the node card displays
-    (`name`, `people`, `budget`, and a `color` used as the card background).
+    Data source agnostic: `tree_callback` returns the nested node structure
+    ApexTree consumes. Each node needs `id`, `children`, and a `data` payload
+    (`name`, `people`, `budget`, `color`).
 
     Args:
         title: Card heading.
@@ -431,8 +411,8 @@ class HRDashboardView(CustomView):
                         ),
                     ]
                 ),
-                # The org chart stays outside the tabs: ApexTree measures its
-                # container at render time, and a hidden tab pane measures 0.
+                # Stays outside the tabs: a hidden tab pane measures 0, and
+                # ApexTree measures its container at render time.
                 OrgChartWidget(
                     title="Organization Chart",
                     tree_callback=self._org_tree,
@@ -1210,12 +1190,9 @@ class HRDashboardView(CustomView):
     # ── org chart callback ───────────────────────────────────────────────────
 
     async def _org_tree(self, request: Request) -> dict[str, Any]:
-        """Nested department tree in the shape ApexTree renders.
-
-        Each node card shows the department name, the number of people in
-        the department and everything below it, and the department budget.
-        The card background uses the color stored on the department row.
-        """
+        """Nested department tree in the shape ApexTree renders: each node
+        shows name, headcount (self + descendants), budget, and the
+        department's stored color as card background."""
         session: Session = request.state.session
         departments = session.scalars(select(Department).order_by(Department.id)).all()
         head_counts = dict(

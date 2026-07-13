@@ -15,6 +15,7 @@ import logging
 
 from fastapi import FastAPI
 from starlette_admin.logging import configure_logging
+from audit import AuditLog, AuditLogView, AuditSubscriber
 from auth import MyAuthProvider
 from config import SECRET_KEY, UMAMI_HOST, UMAMI_WEBSITE_ID, engine
 from dashboard import HRDashboardView
@@ -90,6 +91,10 @@ admin.add_view(
         ],
     )
 )
+admin.add_view(AuditLogView(AuditLog, icon="fa fa-clipboard-list"))
+
+# Writes an AuditLog row for create/edit/delete/export/import on every view above.
+admin.events.subscribe(AuditSubscriber())
 
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 

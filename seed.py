@@ -1,24 +1,18 @@
-"""Standalone seed script for the 07-hr example.
-
-Generates a Faker dataset and writes it straight to the SQLite database
-through the same SQLAlchemy models the app uses, including the JSON avatar
-metadata an `ImageField` upload would produce. No running app or HTTP round
-trip is required.
+"""Standalone seed script: generates a Faker dataset and writes it straight
+to the database through the app's own SQLAlchemy models (no running app or
+HTTP round trip needed).
 
 Usage:
     uv run seed.py                # default volumes
     uv run seed.py --scale 5      # about five times as much data
     uv run seed.py --scale 0.2    # a small dataset for quick local testing
 
-Departments come from a fixed org chart (see `ORG_CHART`) and do not scale:
-a company's reporting structure does not grow with headcount here. Every
-other entity's volume is `round(base_count * scale)`, see `BASE_COUNTS` and
-`scaled_counts()`. `scale` is the single knob that controls how much data
-comes out, and turning it up always means more of everything.
+Departments come from a fixed org chart (`ORG_CHART`) and don't scale.
+Every other entity's volume is `round(base_count * scale)` (`BASE_COUNTS`,
+`scaled_counts()`).
 
-About 20% of employees get an avatar copied from `assets/avatar01.png` to
-`assets/avatar07.png`, each written to its own file under
-`uploads/avatars/`, so a large `--scale` run writes many image files.
+About 20% of employees get an avatar copied from `assets/avatar01-07.png`,
+so a large `--scale` run writes many image files under `uploads/avatars/`.
 """
 
 import argparse
@@ -61,12 +55,10 @@ from starlette_admin.storage import FileInfo, secure_filename
 ASSETS_DIR = Path(__file__).parent / "assets"
 AVATAR_UPLOAD_FOLDER = "avatars"
 
-# Fixed org chart: (name, parent name, color). Parents are listed before
-# their children so each parent's `Department` is known when a child is
-# built. The eight names with children below (Executive plus the seven
-# division heads) are the umbrella nodes an org chart draws as boxes with a
-# reporting line down; the other eighteen are the leaf teams most employees
-# actually belong to (see `pick_department`).
+# Fixed org chart: (name, parent name, color); parents listed before children
+# so each parent's `Department` exists when its child is built. Executive
+# plus the seven division heads are umbrella nodes; the rest are leaf teams
+# most employees actually belong to (see `pick_department`).
 ORG_CHART: list[tuple[str, str | None, str]] = [
     ("Executive", None, "#6b7280"),
     ("Engineering", "Executive", "#3b82f6"),
@@ -150,21 +142,15 @@ EXPENSE_STATUSES = [
 
 @dataclass(frozen=True)
 class SeedConfig:
-    """The one knob every entity count scales from.
-
-    `scale=1.0` produces the volumes in `BASE_COUNTS` as-is; every count is
-    `round(base_count * scale)`, so `scale=3` is roughly three times as much
-    data across every entity, and `scale=0.2` is a fifth as much. Increasing
-    `scale` always means more records, proportionally, for all of them.
-    """
+    """The one knob every entity count scales from: each count is
+    `round(base_count * scale)` against `BASE_COUNTS`."""
 
     scale: float = 1.0
     seed: int = 42
     reset: bool = True
 
 
-# Volumes at scale=1.0. `Department` is not listed: the org chart above is a
-# fixed structure, not a scaled quantity.
+# Volumes at scale=1.0. `Department` isn't listed: the org chart is fixed.
 BASE_COUNTS: dict[str, int] = {
     "employees": 300,
     "projects": 30,
@@ -211,10 +197,7 @@ def image_size(path: Path) -> tuple[int, int]:
 
 def attach_avatar(asset: Path, dims: tuple[int, int]) -> dict[str, Any]:
     """Copy `asset` into `avatars_storage` and return the same `FileInfo`
-    dict shape an `ImageField` upload would store on `Employee.avatar`,
-    including the uuid-prefixed uniquification `LocalStorage.save()` applies
-    on a filename collision.
-    """
+    dict shape an `ImageField` upload would store on `Employee.avatar`."""
     filename = secure_filename(asset.name)
     path = avatars_storage.base_dir / AVATAR_UPLOAD_FOLDER / filename
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -313,8 +296,7 @@ def build_employee(
         department=department,
     )
 
-    # Avatar rule: draw 1 to 10; 1 to 2 attaches a random assets/avatar0<n>.png,
-    # 3 to 10 leaves the employee without one (the UI falls back to initials).
+    # ~20% chance of an avatar; otherwise the UI falls back to initials.
     roll = rng.randint(1, 10)
     if roll <= 2:
         asset, dims = rng.choice(avatar_assets)
@@ -463,9 +445,8 @@ def build_expense(
                 date=fake.date_between(start_date="-1y"),
             )
         )
-    # The real app recomputes this from the expense lines after create/edit
-    # (see ExpenseView._recompute_total_amount in views.py); done directly
-    # here since this script writes rows without going through that hook.
+    # Normally recomputed by ExpenseView._recompute_total_amount; done
+    # directly here since this script bypasses that hook.
     expense = Expense(
         employee=rng.choice(employees),
         project=rng.choice(projects) if rng.random() < 0.7 else None,
@@ -510,8 +491,7 @@ def seed(config: SeedConfig) -> None:
     ]
 
     with Session(engine) as session:
-        # Departments are built sequentially: a child's `parent=` needs the
-        # `Department` instance a parent row a few lines up already created.
+        # Built sequentially: a child's `parent=` needs its parent's already-created `Department`.
         departments_by_name: dict[str, Department] = {}
         for name, parent_name, color in ORG_CHART:
             department = build_department(

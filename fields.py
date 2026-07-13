@@ -1,29 +1,7 @@
-"""
-07-hr: custom fields for the admin.
-
-`DollarField` is a `DecimalField` that keeps a plain decimal in the
-create/edit form, but renders the list and detail pages as a
-dollar-formatted string (e.g. `$1,234.50`).
-
-`AvatarNameField` renders an employee's `name` together with their avatar
-image on the list page, while staying a plain text field everywhere else
-(detail, create, edit, export).
-
-`BadgeField` renders an enum value as a colored badge with an icon on the
-list and detail pages, looking up the badge color and icon class by the
-enum's raw value. `EmploymentTypeBadgeField`, `LeaveTypeBadgeField`,
-`LeaveStatusBadgeField`, `ProjectStatusBadgeField`, `TaskPriorityBadgeField`,
-and `TaskStatusBadgeField` are `BadgeField` subclasses that each pin down
-the color/icon mapping for one enum, matching the colors used by the
-Filament HR demo this example is ported from.
-
-`ExpenseStatusBadgeField` and `ExpenseCategoryBadgeField` are `BadgeField`
-subclasses pinning down the color/icon mapping for `Expense.status` and
-`Expense.category`, respectively.
-
-`ProgressField` is a `ComputedField`: it has no column of its own, and
-derives a completion percentage from a model's `estimated_hours` and
-`actual_hours` at render time.
+"""Custom fields for the admin: `DollarField` (dollar-formatted display),
+`AvatarNameField` (name + avatar on the list page), `BadgeField` and its
+per-enum subclasses (colored badge + icon), and `ProgressField` (computed
+completion percentage). See each class's docstring for specifics.
 """
 
 from dataclasses import dataclass
@@ -50,11 +28,8 @@ class DollarField(DecimalField):
 
 
 def name_initials(name: str) -> str:
-    """Initials shown in an avatar circle when there is no uploaded image.
-
-    Shared by `AvatarNameField` (list page) and the employee profile header
-    (detail page, see `EmployeeView` in views.py), so both fallbacks match.
-    """
+    """Initials for an avatar circle when no image is uploaded. Shared by
+    `AvatarNameField` and the employee profile header so both match."""
     parts = name.split()
     if not parts:
         return ""
@@ -98,10 +73,9 @@ class AvatarNameField(StringField):
 class BadgeField(EnumField):
     """Base class rendering an enum value as a colored badge with an icon.
 
-    Color and icon are looked up in `badge_class_by_value` / `icon_by_value`
-    by the enum's raw value; any value with no explicit mapping falls back
-    to a plain, icon-less badge. Subclasses fill in those two mappings for
-    one specific enum.
+    Looks up color/icon in `badge_class_by_value`/`icon_by_value` by the
+    enum's raw value, falling back to a plain badge if unmapped. Subclasses
+    fill in those two mappings for one specific enum.
     """
 
     list_template: str = "fields/badge.html"
@@ -321,10 +295,8 @@ class ExpenseCategoryBadgeField(BadgeField):
 
 @dataclass
 class ProgressField(ComputedField):
-    """Renders a progress bar comparing `actual_hours` against
-    `estimated_hours`, colored by how the work is tracking against its
-    estimate: on track, exactly done, or over the estimate.
-    """
+    """Progress bar for `actual_hours` vs `estimated_hours`, colored by
+    whether the work is on track, done, or over estimate."""
 
     list_template: str = "fields/progress.html"
     detail_template: str = "fields/progress.html"

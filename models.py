@@ -1,13 +1,9 @@
-"""
-07-hr: SQLAlchemy models for the HR module.
-
-Ported from the entities and relationships of the Filament HR demo
+"""SQLAlchemy models for the HR module, ported from the Filament HR demo
 (filamentphp/demo, app/Models/HR): Department, Employee, LeaveRequest,
-Project, Task, Timesheet, Expense, and ExpenseLine.
+Project, Task, Timesheet, Expense, ExpenseLine.
 
-`SoftDeleteMixin` is shared by every model that should be hidden rather
-than hard-deleted (Employee, Project). Pair it with `SoftDeleteModelView`
-in views.py to get the "hidden on delete" behavior in the admin.
+`SoftDeleteMixin` marks a model as hide-on-delete (Employee, Project); pair
+with `SoftDeleteModelView` in views.py.
 """
 
 import enum
@@ -36,12 +32,10 @@ class Base(DeclarativeBase):
 
 
 class SoftDeleteMixin:
-    """Adds the `deleted_at` column shared by every soft-deletable model.
-
-    A row with `deleted_at IS NULL` is live; any other value means the row
-    was "deleted" through the admin. Mix this into a model, then use
-    `SoftDeleteModelView` (see views.py) so list/count queries hide trashed
-    rows and the delete action stamps this column instead of running DELETE.
+    """Adds `deleted_at`: NULL means live, any other value means "deleted"
+    through the admin. Pair with `SoftDeleteModelView` (views.py) so
+    list/count queries hide trashed rows and delete stamps this instead of
+    running DELETE.
     """
 
     deleted_at: Mapped[datetime | None] = mapped_column(

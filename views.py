@@ -1,11 +1,6 @@
-"""
-07-hr: admin views.
-
-`SoftDeleteModelView` is the reusable base class: any ModelView built on
-top of a model that mixes in `SoftDeleteMixin` (see models.py) gets
-"delete hides the row" behavior for free by subclassing it. Employee and
-Project both mix in SoftDeleteMixin and both just hide deleted rows,
-without exposing a restore UI.
+"""Admin views. `SoftDeleteModelView` gives any model mixing in
+`SoftDeleteMixin` (see models.py) "delete hides the row" behavior for free;
+Employee and Project subclass it, neither exposing a restore UI.
 """
 
 from collections import Counter
@@ -15,6 +10,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 import anyio
+from audit import log_action
 from config import avatars_storage
 from markupsafe import escape
 from fields import (
@@ -113,8 +109,7 @@ class ModelView(BaseModelView):
         return await super().is_action_allowed(request, name)
 
     async def is_row_action_allowed(self, request, name):
-        # Readers keep the read-only "view" row action; everything else is
-        # write-shaped and stays admin-only.
+        # Readers keep "view"; every other row action is write-shaped.
         if self._is_reader(request) and name != "view":
             return False
         return await super().is_row_action_allowed(request, name)
@@ -239,6 +234,13 @@ class DepartmentView(ModelView):
         session.add(department)
         session.flush()  # the session is committed automatically at the end of each request
         delta_sign = "+" if delta >= 0 else "-"
+        log_action(
+            request,
+            self.key,
+            department.id,
+            f"Adjusted {department.name!r} budget by {delta_sign}${abs(delta):,.2f}, "
+            f"new total: ${new_budget:,.2f}",
+        )
         flash(
             request,
             f"{department.name}'s budget was adjusted by {delta_sign}${abs(delta):,.2f}, "
@@ -260,6 +262,10 @@ class DepartmentView(ModelView):
             department.is_active = False
             session.add(department)
         session.flush()  # the session is committed automatically at the end of each request
+        for department in departments:
+            log_action(
+                request, self.key, department.id, f"Deactivated {department.name!r}"
+            )
         flash(
             request,
             f"{len(departments)} department(s) were deactivated.",
@@ -271,15 +277,9 @@ class DepartmentView(ModelView):
 
 
 class EmployeeView(SoftDeleteModelView):
-    """Renders the detail page as a profile: `templates/employee/detail.html`
-    extends the stock detail template and replaces the attribute/value table
-    (the `details_table` block) with a hand-built profile body: an identity
-    row (avatar, job title, badges) followed by grouped datagrids for
-    contact, employment, and compensation facts.
-
-    The `initials` and `tenure` methods below exist for that template: it
-    receives this view as `view` in its context and calls them directly,
-    which keeps date math and string munging in Python rather than in Jinja.
+    """Detail page is `templates/employee/detail.html`, a hand-built profile
+    body in place of the stock attribute/value table. It receives this view
+    as `view` and calls `initials`/`tenure` directly for date/string logic.
     """
 
     detail_template = "employee/detail.html"
@@ -330,10 +330,8 @@ class EmployeeView(SoftDeleteModelView):
         "skills",
         "metadata_",
     ]
-    # `RelationField`s (like `department`) are excluded from the searchable
-    # default computed by the SQLAlchemy converter. Listed here
-    # explicitly, alongside every other field, so `department` picks up the
-    # filters declared on it above.
+    # Listed explicitly since RelationFields (`department`) are excluded from
+    # the SQLAlchemy converter's default, and this way it keeps its filters.
     searchable_fields = [
         "id",
         "name",
@@ -392,10 +390,8 @@ class EmployeeView(SoftDeleteModelView):
                 )
         email = data.get("email")
         if email is not None:
-            # Checked here rather than left to the database so the form
-            # reports it against the `email` field instead of surfacing
-            # the raw `sqlalchemy.exc.IntegrityError` from the unique
-            # constraint on `employees.email`.
+            # Checked here, not left to the unique constraint, so the error
+            # attaches to the `email` field instead of raising IntegrityError.
             session: Session = request.state.session
             query = select(Employee.id).where(Employee.email == email)
             pk = request.query_params.get("pk")
@@ -408,12 +404,9 @@ class EmployeeView(SoftDeleteModelView):
         await super().validate(request, data)
 
     def get_search_query(self, request: Request, term: str) -> Any:
-        # The base `get_search_query` only matches fields whose exact type is
-        # in its allowlist (see `contrib/sqla/view.py`), so it skips `name`
-        # here: that column is rendered by `AvatarNameField`, a `StringField`
-        # subclass, and the allowlist check is an exact type match rather
-        # than an `isinstance` check. Add the `name` match back explicitly so
-        # the search bar still finds employees by name.
+        # Base impl's allowlist is an exact type match, so it skips `name`
+        # (rendered via `AvatarNameField`, a `StringField` subclass). Added
+        # back explicitly so the search bar still matches employees by name.
         return or_(
             super().get_search_query(request, term), Employee.name.ilike(f"%{term}%")
         )
@@ -579,9 +572,8 @@ class LeaveRequestView(ModelView):
         self._review(request, pending, LeaveStatus.REJECTED)
         flash(request, f"{len(pending)} leave request(s) were rejected.", "success")
 
-    @staticmethod
     def _review(
-        request: Request, leave_requests: list[LeaveRequest], status: LeaveStatus
+        self, request: Request, leave_requests: list[LeaveRequest], status: LeaveStatus
     ) -> None:
         session: Session = request.state.session
         now = datetime.utcnow()
@@ -590,6 +582,14 @@ class LeaveRequestView(ModelView):
             leave_request.reviewed_at = now
             session.add(leave_request)
         session.flush()  # the session is committed automatically at the end of each request
+        for leave_request in leave_requests:
+            log_action(
+                request,
+                self.key,
+                leave_request.id,
+                f"{status.value.title()} leave request for "
+                f"{leave_request.employee.name}",
+            )
 
 
 # ── Project (soft-deletable) ─────────────────────────────────────────────────
@@ -619,15 +619,10 @@ class TaskInline(InlineModelView):
 
 
 class ProjectView(SoftDeleteModelView):
-    """Renders the detail page as a mini dashboard: `templates/project/detail.html`
-    extends the stock detail template, adds three stat cards (budget burn,
-    task breakdown, timeline), and replaces the attribute/value table with a
-    facts datagrid, with the task inline table below it for drill-down.
-
-    Each card is backed by one of the helper methods below. The template
-    receives this view as `view` and the model instance as `raw_obj`, so a
-    card renders with `view.budget_burn(raw_obj)` and the aggregation logic
-    stays in Python next to the view.
+    """Detail page is `templates/project/detail.html`, a mini dashboard with
+    three stat cards (budget burn, task breakdown, timeline) in place of the
+    stock attribute table. Template gets this view as `view` and the model as
+    `raw_obj`, rendering e.g. `view.budget_burn(raw_obj)` per the methods below.
     """
 
     detail_template = "project/detail.html"
@@ -706,17 +701,14 @@ class ProjectView(SoftDeleteModelView):
             raise FormValidationError(errors)
         await super().validate(request, data)
 
-    # Instantiated once for its color and icon mappings, so the task
-    # breakdown card uses the exact same badges as the task list and inline.
+    # Reused for its color/icon mappings, so the breakdown card matches the
+    # task list and inline table's badges.
     _task_status_badges = TaskStatusBadgeField("status", enum=TaskStatus)
 
     @staticmethod
     def budget_burn(obj: Any) -> dict[str, Any]:
         """Share of `budget` consumed by `spent`, as progress bar context.
-
-        The bar turns orange at 80 percent and red past 100, the same
-        thresholds a reviewer would eyeball on a burn chart.
-        """
+        Bar turns orange at 80%, red past 100%."""
         if not obj.budget:
             return {"width": 0, "bar_class": "bg-secondary", "label": "No budget set"}
         percent = round(float(obj.spent) / float(obj.budget) * 100)
@@ -734,13 +726,9 @@ class ProjectView(SoftDeleteModelView):
         }
 
     def task_stats(self, obj: Any) -> list[dict[str, Any]]:
-        """Task counts grouped by status, shaped for `fields/badge.html`.
-
-        Each entry carries the badge class and icon from
-        `TaskStatusBadgeField` plus a `count`, and statuses with no tasks
-        are omitted. Iterating `TaskStatus` keeps the workflow order
-        (backlog first, cancelled last) rather than insertion order.
-        """
+        """Task counts by status, shaped for `fields/badge.html`. Omits empty
+        statuses; iterates `TaskStatus` so order follows the workflow, not
+        insertion order."""
         counts = Counter(task.status for task in obj.tasks)
         return [
             {
@@ -757,11 +745,8 @@ class ProjectView(SoftDeleteModelView):
 
     @staticmethod
     def timeline(obj: Any) -> dict[str, Any]:
-        """Schedule position between `start_date` and `end_date`.
-
-        Returns a headline (days left, days overdue, or a status note) plus
-        progress bar context for how far through its window the project is.
-        """
+        """Headline (days left/overdue/status) plus progress bar context for
+        where `obj` sits between `start_date` and `end_date`."""
         today = date.today()
         if obj.status == ProjectStatus.COMPLETED:
             return {"headline": "Completed", "width": 100, "bar_class": "bg-success"}
@@ -943,14 +928,9 @@ class ExpenseView(ModelView):
     async def _recompute_total_amount(request: Request, expense_id: int) -> None:
         """Set `total_amount` to the sum of this expense's line items.
 
-        Runs once the request's own transaction is durably committed, so the
-        expense's inline `ExpenseLine` rows (saved after the parent expense,
-        see `_save_inlines` in base.py) are guaranteed to already be in the
-        database. `request.state.session` must not be written to at this
-        point (see `on_commit`'s docstring: it is committed and closed by the
-        time this hook returns, discarding anything flushed on it), so this
-        opens its own session on the same engine, updates, and commits
-        independently.
+        Runs after commit, once inline `ExpenseLine` rows are guaranteed
+        saved. Opens its own session rather than `request.state.session`,
+        which is already closed by this point (see `on_commit`'s docstring).
         """
         engine = request.state.session.get_bind()
 

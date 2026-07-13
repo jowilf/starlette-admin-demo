@@ -10,16 +10,14 @@ DATABASE_URL = os.getenv("ENGINE", "sqlite:///demo.db?check_same_thread=false")
 
 _engine_kwargs = {
     "echo": APP_ENV != "PROD",
-    # Detect and discard connections MySQL has silently dropped (e.g. past
-    # wait_timeout) before handing them to a request.
+    # Discards connections MySQL silently dropped (e.g. past wait_timeout).
     "pool_pre_ping": True,
-    # Recycle connections before they hit MySQL's default wait_timeout (8h),
-    # so idle workers don't hand out connections the server already closed.
+    # Recycle before MySQL's default 8h wait_timeout closes the connection first.
     "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "1800")),
 }
 if not DATABASE_URL.startswith("sqlite"):
-    # Each of the app's 8 fastapi workers (see Dockerfile) gets its own pool,
-    # so keep per-worker limits modest to stay under MySQL's max_connections.
+    # 8 fastapi workers (see Dockerfile) each get their own pool, so keep
+    # per-worker limits modest to stay under MySQL's max_connections.
     _engine_kwargs["pool_size"] = int(os.getenv("DB_POOL_SIZE", "5"))
     _engine_kwargs["max_overflow"] = int(os.getenv("DB_MAX_OVERFLOW", "10"))
     _engine_kwargs["pool_timeout"] = int(os.getenv("DB_POOL_TIMEOUT", "30"))
