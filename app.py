@@ -11,8 +11,10 @@ dropdown in the menu.
 """
 
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI
+from starlette_admin.logging import configure_logging
 from auth import MyAuthProvider
 from config import SECRET_KEY, UMAMI_HOST, UMAMI_WEBSITE_ID, engine
 from dashboard import HRDashboardView
@@ -92,3 +94,5 @@ admin.add_view(
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 admin.mount_to(app)
+
+configure_logging(level=logging.ERROR)
