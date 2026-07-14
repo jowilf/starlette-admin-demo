@@ -53,6 +53,7 @@ from starlette.requests import Request
 from starlette_admin import (
     CollectionField,
     ColorField,
+    FieldRef,
     FieldsetWidget,
     HasOne,
     ImageField,
@@ -190,7 +191,7 @@ class DepartmentView(ModelView):
                 TextWidget(
                     content="Prefer the 'Adjust budget' row action for changes",
                 ),
-                "budget",
+                FieldRef("budget", prepend="$"),
             ],
         ),
     ]
@@ -354,7 +355,11 @@ class EmployeeView(SoftDeleteModelView):
             tabs=[
                 (
                     "Basic Info",
-                    ["avatar", ("name", "email"), ("job_title", "hire_date")],
+                    [
+                        "avatar",
+                        ("name", FieldRef("email", prepend="@")),
+                        ("job_title", "hire_date"),
+                    ],
                 ),
                 (
                     "Details",
@@ -367,7 +372,10 @@ class EmployeeView(SoftDeleteModelView):
                 ("Additional Info", ["skills", "metadata_"]),
                 (
                     "Compensation",
-                    [TextWidget(content="Visible to HR only.", card=False), "salary"],
+                    [
+                        TextWidget(content="Visible to HR only.", card=False),
+                        FieldRef("salary", prepend="$"),
+                    ],
                 ),
             ]
         ),
@@ -677,8 +685,11 @@ class ProjectView(SoftDeleteModelView):
                     "detail dashboard.",
                     card=False,
                 ),
-                ("budget", "spent"),
-                ("estimated_hours", "actual_hours"),
+                (FieldRef("budget", prepend="$"), FieldRef("spent", prepend="$")),
+                (
+                    FieldRef("estimated_hours", append="hrs"),
+                    FieldRef("actual_hours", append="hrs"),
+                ),
             ],
             collapsible=True,
             collapsed=True,
@@ -806,7 +817,13 @@ class TaskView(ModelView):
         ),
         PanelWidget(
             title="Effort",
-            children=[("estimated_hours", "actual_hours"), "labels"],
+            children=[
+                (
+                    FieldRef("estimated_hours", append="hrs"),
+                    FieldRef("actual_hours", append="hrs"),
+                ),
+                "labels",
+            ],
             collapsible=True,
             collapsed=True,
         ),
@@ -840,9 +857,12 @@ class TimesheetView(ModelView):
         PanelWidget(
             title="Time & Billing",
             children=[
-                ("hours", "minutes"),
-                ("is_billable", "hourly_rate"),
-                "total_cost",
+                (
+                    FieldRef("hours", append="hrs"),
+                    FieldRef("minutes", append="min"),
+                ),
+                ("is_billable", FieldRef("hourly_rate", prepend="$")),
+                FieldRef("total_cost", prepend="$"),
             ],
         ),
     ]
@@ -889,7 +909,7 @@ class ExpenseView(ModelView):
                     card=False,
                 ),
                 ("submitted_at", "approved_at"),
-                ("approved_by", "total_amount"),
+                ("approved_by", FieldRef("total_amount", prepend="$")),
             ],
             collapsible=True,
             collapsed=True,

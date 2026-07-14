@@ -144,7 +144,7 @@ Grouping widgets (all from `starlette_admin`, shared with dashboards):
 - `FieldsetWidget(legend=, children=, disabled=)`: native HTML fieldset; `disabled=True` disables every nested control.
 - `TabsWidget(tabs=[(label, children), ...])`: tabbed sections.
 - `ColumnWidget(children=)`: untitled vertical group.
-- Explicit widths: `RowWidget(children=[Col(FormField("name"), Breakpoints(default=12, md=4)), ...])`. `FormField("email", show_label=False)` suppresses the label.
+- Explicit widths: `RowWidget(children=[Col(FieldRef("name"), Breakpoints(default=12, md=4)), ...])`. `FieldRef("email", show_label=False)` suppresses the label.
 - Static content anywhere: `HtmlWidget(html=...)`, `TextWidget(content=...)`.
 
 Rules:
