@@ -191,7 +191,7 @@ class DepartmentView(ModelView):
                 TextWidget(
                     content="Prefer the 'Adjust budget' row action for changes",
                 ),
-                FieldRef("budget", prepend="$"),
+                FieldRef("budget", prepend="$", show_label=False),
             ],
         ),
     ]
