@@ -15,4 +15,4 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
     GIT_CONFIG_VALUE_0="https://github.com/" \
     uv sync --frozen --no-dev
 
-CMD ["uv", "run", "--", "fastapi", "run", "--workers", "8", "--port", "8000", "--forwarded-allow-ips", "*"]
+CMD ["uv", "run", "--", "fastapi", "run", "src/starlette_admin_demo/app.py", "--workers", "8", "--port", "8000", "--forwarded-allow-ips", "*"]

@@ -43,11 +43,12 @@ from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
 import httpx
-from config import avatars_storage
-from config import engine as app_engine
 from faker import Faker
-from models import Base
-from seed import (
+
+from .config import avatars_storage
+from .config import engine as app_engine
+from .models import Base
+from .seed import (
     EMPLOYMENT_TYPES,
     EXPENSE_CATEGORIES,
     EXPENSE_STATUSES,

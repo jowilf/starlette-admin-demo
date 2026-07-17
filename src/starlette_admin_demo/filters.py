@@ -6,7 +6,6 @@ Employee list's `department` field.
 
 from typing import Any
 
-from models import Department, Employee
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.requests import Request
@@ -17,6 +16,8 @@ from starlette_admin.filters.base import (
     FilterValidationError,
 )
 from starlette_admin.filters.enum import InFilter, NotInFilter
+
+from .models import Department, Employee
 
 
 class DepartmentContainsFilter(BaseFilter):

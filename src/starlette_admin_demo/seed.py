@@ -26,10 +26,14 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-from config import avatars_storage
-from config import engine as app_engine
 from faker import Faker
-from models import (
+from PIL import Image
+from sqlalchemy.orm import Session
+from starlette_admin.storage import FileInfo, secure_filename
+
+from .config import avatars_storage
+from .config import engine as app_engine
+from .models import (
     Base,
     Department,
     Employee,
@@ -48,9 +52,6 @@ from models import (
     TaskStatus,
     Timesheet,
 )
-from PIL import Image
-from sqlalchemy.orm import Session
-from starlette_admin.storage import FileInfo, secure_filename
 
 ASSETS_DIR = Path(__file__).parent / "assets"
 AVATAR_UPLOAD_FOLDER = "avatars"

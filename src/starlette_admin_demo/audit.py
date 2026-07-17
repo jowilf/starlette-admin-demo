@@ -16,8 +16,6 @@ from datetime import datetime
 from typing import Any
 
 import anyio
-from config import engine
-from models import Base
 from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 from starlette.requests import Request
@@ -33,6 +31,9 @@ from starlette_admin.events import (
     AfterImportContext,
     on,
 )
+
+from .config import engine
+from .models import Base
 
 # Not `__admin_repr__`: some models (LeaveRequest, Timesheet) build their repr
 # via a relationship, which risks DetachedInstanceError in *_COMMITTED hooks.

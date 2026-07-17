@@ -14,12 +14,19 @@ from contextlib import asynccontextmanager
 import logging
 
 from fastapi import FastAPI
+from starlette.applications import Starlette
+from starlette.middleware.sessions import SessionMiddleware
+from starlette_admin import DropDown
+from starlette_admin.contrib.sqla import Admin
+from starlette_admin.export import ExportConfig
+from starlette_admin.importers import ImportConfig
 from starlette_admin.logging import configure_logging
-from audit import AuditLog, AuditLogView, AuditSubscriber
-from auth import MyAuthProvider
-from config import SECRET_KEY, UMAMI_HOST, UMAMI_WEBSITE_ID, engine
-from dashboard import HRDashboardView
-from models import (
+
+from .audit import AuditLog, AuditLogView, AuditSubscriber
+from .auth import MyAuthProvider
+from .config import SECRET_KEY, UMAMI_HOST, UMAMI_WEBSITE_ID, engine
+from .dashboard import HRDashboardView
+from .models import (
     Base,
     Department,
     Employee,
@@ -29,13 +36,7 @@ from models import (
     Task,
     Timesheet,
 )
-from starlette.applications import Starlette
-from starlette.middleware.sessions import SessionMiddleware
-from starlette_admin import DropDown
-from starlette_admin.contrib.sqla import Admin
-from starlette_admin.export import ExportConfig
-from starlette_admin.importers import ImportConfig
-from views import (
+from .views import (
     DepartmentView,
     EmployeeView,
     ExpenseView,

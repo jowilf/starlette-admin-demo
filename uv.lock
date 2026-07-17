@@ -1094,7 +1094,7 @@ wheels = [
 [[package]]
 name = "starlette-admin"
 version = "0.16.0"
-source = { git = "https://github.com/jowilf/starlette-admin-next.git?rev=b4690370bbf24ad7aa67dc86ae983d22cff929e0#b4690370bbf24ad7aa67dc86ae983d22cff929e0" }
+source = { git = "https://github.com/jowilf/starlette-admin-next.git?rev=6792d8b96ac7478813ad9195d0f12ead6256e186#6792d8b96ac7478813ad9195d0f12ead6256e186" }
 dependencies = [
     { name = "itsdangerous" },
     { name = "jinja2" },
@@ -1105,7 +1105,7 @@ dependencies = [
 [[package]]
 name = "starlette-admin-demo"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "faker" },
     { name = "fastapi", extra = ["standard"] },
@@ -1131,7 +1131,7 @@ requires-dist = [
     { name = "pillow", specifier = ">=12.3.0" },
     { name = "pymysql", specifier = ">=1.2.0" },
     { name = "sqlalchemy", specifier = ">=2.0.51" },
-    { name = "starlette-admin", git = "https://github.com/jowilf/starlette-admin-next.git?rev=b4690370bbf24ad7aa67dc86ae983d22cff929e0" },
+    { name = "starlette-admin", git = "https://github.com/jowilf/starlette-admin-next.git?rev=6792d8b96ac7478813ad9195d0f12ead6256e186" },
 ]
 
 [package.metadata.requires-dev]

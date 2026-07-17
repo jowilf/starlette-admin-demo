@@ -18,20 +18,6 @@ from starlette_admin.fields import BaseField
 from starlette_admin.i18n import lazy_gettext as _
 
 
-def positive(message: str | None = None):
-    """Requires `value > 0`.
-
-    Complements `starlette_admin.validators.number_range`, which is
-    inclusive and so can't express a strict lower bound of zero.
-    """
-
-    def validate(request: Request, field: BaseField, value: Any) -> None:
-        if value <= 0:
-            raise ValueError(message or _("Must be greater than zero."))
-
-    return validate
-
-
 def unique(model: type, column: Any, message: str | None = None):
     """Requires no other row of `model` to have `column == value`.
 

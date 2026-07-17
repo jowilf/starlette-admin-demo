@@ -10,43 +10,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 import anyio
-from audit import log_action
-from config import avatars_storage
 from markupsafe import escape
-from fields import (
-    AvatarNameField,
-    DollarField,
-    EmploymentTypeBadgeField,
-    ExpenseCategoryBadgeField,
-    ExpenseStatusBadgeField,
-    LeaveStatusBadgeField,
-    LeaveTypeBadgeField,
-    ProgressField,
-    ProjectStatusBadgeField,
-    TaskPriorityBadgeField,
-    TaskStatusBadgeField,
-    name_initials,
-)
-from filters import (
-    DepartmentContainsFilter,
-    DepartmentInFilter,
-    DepartmentNotInFilter,
-)
-from models import (
-    Employee,
-    EmploymentType,
-    Expense,
-    ExpenseCategory,
-    ExpenseLine,
-    ExpenseStatus,
-    LeaveRequest,
-    LeaveStatus,
-    LeaveType,
-    ProjectStatus,
-    Task,
-    TaskPriority,
-    TaskStatus,
-)
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 from starlette.requests import Request
@@ -75,8 +39,45 @@ from starlette_admin.contrib.sqla.filters import IsNotNullFilter, IsNullFilter
 from starlette_admin.exceptions import ActionFailed, FormValidationError
 from starlette_admin.fields import DecimalField, EmailField, IntegerField, SlugField
 from starlette_admin.helpers import on_commit
-from starlette_admin.validators import email, number_range
-from validators import positive, unique
+from starlette_admin.validators import email, number_gt, number_range
+
+from .audit import log_action
+from .config import avatars_storage
+from .fields import (
+    AvatarNameField,
+    DollarField,
+    EmploymentTypeBadgeField,
+    ExpenseCategoryBadgeField,
+    ExpenseStatusBadgeField,
+    LeaveStatusBadgeField,
+    LeaveTypeBadgeField,
+    ProgressField,
+    ProjectStatusBadgeField,
+    TaskPriorityBadgeField,
+    TaskStatusBadgeField,
+    name_initials,
+)
+from .filters import (
+    DepartmentContainsFilter,
+    DepartmentInFilter,
+    DepartmentNotInFilter,
+)
+from .models import (
+    Employee,
+    EmploymentType,
+    Expense,
+    ExpenseCategory,
+    ExpenseLine,
+    ExpenseStatus,
+    LeaveRequest,
+    LeaveStatus,
+    LeaveType,
+    ProjectStatus,
+    Task,
+    TaskPriority,
+    TaskStatus,
+)
+from .validators import unique
 
 # ── Soft-delete base views ───────────────────────────────────────────────────
 
@@ -322,7 +323,7 @@ class EmployeeView(SoftDeleteModelView):
         DollarField(
             "salary",
             help_text="Annual salary in USD.",
-            validators=[positive(message="Salary must be a positive amount.")],
+            validators=[number_gt(0, message="Salary must be a positive amount.")],
         ),
         "hire_date",
         TagsField("skills", label="Skills"),
@@ -374,7 +375,7 @@ class EmployeeView(SoftDeleteModelView):
     ]
     fields_default_sort = ["name"]
     # Quick edits from the list page, without opening the full form.
-    inline_editable_fields = ["is_active", "job_title", "salary"]
+    inline_editable_fields = ["is_active", "job_title", "salary", "department"]
     form_layout = [
         TabsWidget(
             tabs=[
@@ -471,7 +472,7 @@ class LeaveRequestView(ModelView):
         "end_time",
         DecimalField(
             "days_requested",
-            validators=[positive(message="Days requested must be greater than zero.")],
+            validators=[number_gt(0, message="Days requested must be greater than zero.")],
         ),
         "reason",
         "reviewer_notes",
@@ -862,7 +863,7 @@ class TimesheetView(ModelView):
         "employee",
         "date",
         DecimalField(
-            "hours", validators=[positive(message="Hours must be greater than zero.")]
+            "hours", validators=[number_gt(0, message="Hours must be greater than zero.")]
         ),
         IntegerField(
             "minutes",
