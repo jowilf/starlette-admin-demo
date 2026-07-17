@@ -1,6 +1,6 @@
-# Fields: details and custom field types
+# Fields: details, validators, and custom field types
 
-Fields are plain Python dataclasses; every constructor argument is a dataclass field. See the quick map in SKILL.md for the full catalog. This file covers the details that the map omits and how to build custom fields.
+Fields are plain Python dataclasses; every constructor argument is a dataclass field. See the quick map in SKILL.md for the full catalog. This file covers the details that the map omits, server-side validators, and how to build custom fields.
 
 ## Attribute notes
 
@@ -14,6 +14,43 @@ Fields are plain Python dataclasses; every constructor argument is a dataclass f
 - `JSONField` renders a tree/code editor storing a `dict`; pass a JSON Schema to `validation_schema` for client-side feedback.
 - `DateTimeField(output_format=...)` accepts Babel formats (`"short"`, `"medium"`, `"long"`, `"full"`, or custom) and converts timezones automatically when timezone support is enabled.
 - `TinyMCEEditorField` (tinymce extra): `height`, `menubar`, `statusbar`, `toolbar`, plus any native TinyMCE config via `extra_options`.
+
+## Validators
+
+Every field accepts `validators=[...]`: sync or async callables `(request, field, value)` that raise `ValueError` to reject the value. They run on form submission after the built-in `required` check, in order, stopping at the first error; that error renders under the input, and errors across fields are aggregated into one response. Empty values (`None`, `""`, empty collections) are checked only against `required`, so validators never see missing input.
+
+Built-in factories in `starlette_admin.validators` (every factory accepts `message=` to override the error text):
+
+| Factory | Rule |
+| --- | --- |
+| `length(min=, max=)` | `min <= len(value) <= max`; unset bounds are not checked |
+| `number_range(min=, max=)` | numeric bounds; unset bounds are not checked |
+| `regexp(pattern, flags=)` | value matches the pattern via `re.match` |
+| `email(**options)` | valid email address via the email-validator package (`pip install starlette-admin[email]`); DNS/MX deliverability checks are off by default, pass `check_deliverability=True` to enable |
+| `url(schemes=, max_length=)` | absolute URL with valid scheme and host; default schemes http/https/ftp/ftps, `schemes=None` accepts any |
+| `uuid(version=)` | valid UUID, optionally of a specific version (1, 3, 4, or 5) |
+| `ip_address(ipv4=True, ipv6=False)` | valid IP address in the enabled families |
+| `any_of(values)` / `none_of(values)` | membership allow list / deny list |
+| `file_size(max_size)` | upload no larger than `max_size` bytes |
+| `file_type(accept)` | upload matches an HTML-file-input accept string (`".pdf"`, `"image/*"`, `"image/png,.svg"`) |
+| `valid_image()` | upload passes Pillow image verification |
+
+Rules and context:
+
+- `EmailField`, `URLField`, `UUIDField`, and `IPAddressField` install their matching validator automatically when `validators` is empty; passing your own list replaces that default.
+- Relation fields (`HasOne`/`HasMany`) validate primary keys; multi-value fields receive the whole list.
+- `FileField`/`ImageField` run the chain once per `UploadFile`, after the field's own `max_size` and `accept` checks; `ImageField` prepends `valid_image()`.
+- Validators receive the request, so they can query the database:
+
+```python
+async def unique_slug(request, field, value):
+    if await slug_exists(request.state.session, value):
+        raise ValueError("This slug is already taken")
+
+StringField("slug", validators=[unique_slug])
+```
+
+Cross-field rules do not belong in field validators. Override the view's `validate(request, data)` and raise `FormValidationError({field_name: message})`; it runs only after every field passes its own chain. During inline saves `data` contains only the edited field, see [views.md](views.md).
 
 ## Custom fields
 

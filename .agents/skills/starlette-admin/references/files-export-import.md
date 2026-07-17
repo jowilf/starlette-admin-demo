@@ -28,7 +28,7 @@ Backends:
 
 Multiple files: `multiple=True` stores a JSON list of `FileInfo`. Saving replaces the whole list; per-file management needs an inline child model. `ListField(FileField(...))` is not supported.
 
-Validation order: `accept`, then `max_size`, then custom `validators` (callables receiving `UploadFile`, raising `FileValidationError`). `accept` checks only the client-supplied extension/content-type; for security, inspect magic bytes (with `filetype` or `python-magic`) in a validator and `seek(0)` before and after reading. `ImageField` defaults to `accept="image/*"` and verifies the upload decodes as a real image. Filenames are always sanitized with `secure_filename`.
+Validation runs once per uploaded file: `max_size`, then `accept`, then custom `validators` (callables `(request, field, upload)` raising `ValueError`; see [fields.md](fields.md)). `accept` checks only the client-supplied extension/content-type; for security, inspect magic bytes (with `filetype` or `python-magic`) in a validator and `seek(0)` before and after reading. `ImageField` defaults to `accept="image/*"` and prepends the `valid_image()` validator, which verifies the upload decodes as a real image via Pillow. Filenames are always sanitized with `secure_filename`.
 
 Cleanup limitations: a rolled-back transaction leaves the uploaded file in storage; deleting or replacing a row leaves the old file behind. Reconcile orphans with a periodic job, or use sqlalchemy-file for transactional storage tied to the SQLAlchemy unit of work (see below).
 

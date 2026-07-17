@@ -39,7 +39,7 @@ Lifecycle: create `Admin`, `add_view(...)` for every view, then `mount_to(app)` 
 
 ### Plain SQLAlchemy + Pydantic validation
 
-`starlette_admin.contrib.sqla.ext.pydantic.ModelView` takes `pydantic_model=` to validate form data against a separate schema: `admin.add_view(ModelView(User, pydantic_model=UserIn))`. Example: `examples/11-sqla-pydantic`.
+`starlette_admin.contrib.sqla.ext.pydantic.ModelView` takes `pydantic_model=` to validate form data against a separate schema: `admin.add_view(ModelView(User, pydantic_model=UserIn))`. Example: `examples/11-sqla-pydantic-fastapi`.
 
 ## MongoDB backends
 

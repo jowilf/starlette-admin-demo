@@ -1,6 +1,6 @@
 ---
 name: starlette-admin
-description: Build and customize admin interfaces with starlette-admin, the admin framework for Starlette and FastAPI apps. Use when creating an admin panel or CRUD dashboard for SQLAlchemy, SQLModel, Beanie, or MongoEngine models, or when working with ModelView, fields, filters, batch/row actions, authentication, file uploads, export/import, inline forms, custom dashboards, or widgets in starlette-admin.
+description: Build and customize admin interfaces with starlette-admin, the admin framework for Starlette and FastAPI apps. Use when creating an admin panel or CRUD dashboard for SQLAlchemy, SQLModel, Beanie, or MongoEngine models, or when working with ModelView, fields, field validators, filters, batch/row actions, inline editing, authentication, file uploads, export/import, inline forms, custom dashboards, or widgets in starlette-admin.
 ---
 
 # starlette-admin
@@ -95,6 +95,7 @@ These are the mistakes that break real apps. Follow them without exception.
 13. **Multiple `Admin` instances on one app need distinct `base_url` and `route_name`,** otherwise generated links resolve to the wrong admin.
 14. **Import calls `create()` per row, never upsert.** Re-importing an export with primary keys duplicates rows or fails. The UI offers dry-run validation and a skip-PK option.
 15. **`form_layout` must reference each field at most once and only names present in `fields`;** violations raise `ValueError` at view construction. Fields omitted from the layout are appended at the bottom, never lost.
+16. **Inline saves submit only the edited field.** With `inline_editable_fields`, the view's `validate()` hook and the edit lifecycle hooks receive `data` containing just that field. Guard cross-field rules with `"name" in data` checks; direct indexing raises `KeyError`.
 
 ## ModelView configuration cheat sheet
 
@@ -116,6 +117,7 @@ class PostView(ModelView):
     # Feature lists
     actions = ["make_published", "delete"]          # batch actions ("delete" is built in)
     row_actions = ["view", "edit", "delete"]        # built-in row actions
+    inline_editable_fields = ["title", "published"] # single-field edit popovers on the list page
     inlines = [CommentInline]                       # nested child forms
     exporters = [CsvExporter(), ExcelExporter()]    # default: Csv + Json
     importers = [CsvImporter()]                     # default: Csv + Json
@@ -135,7 +137,7 @@ Registration accepts naming overrides: `admin.add_view(PostView(Post, key="blog-
 | Data | Field |
 | --- | --- |
 | Short text / long text / rich text | `StringField`, `TextAreaField`, `TinyMCEEditorField` (tinymce extra) |
-| Formatted strings | `EmailField`, `URLField`, `PhoneField`, `ColorField`, `PasswordField`, `SlugField(populate_from=...)` |
+| Formatted strings | `EmailField`, `URLField`, `UUIDField`, `IPAddressField`, `PhoneField`, `ColorField`, `PasswordField`, `SlugField(populate_from=...)` |
 | Numbers | `IntegerField(min, max, step)`, `DecimalField`, `FloatField` (plain text input, no min/max) |
 | Boolean | `BooleanField` |
 | Date/time | `DateField`, `DateTimeField(output_format=...)`, `TimeField`, `ArrowField` (arrow extra) |
@@ -146,7 +148,9 @@ Registration accepts naming overrides: `admin.add_view(PostView(Post, key="blog-
 | Files | `FileField`, `ImageField` (both take `storage=`, `upload_folder=`, `accept=`, `max_size=`, `multiple=`, `validators=`) |
 | Relations | `HasOne`, `HasMany` (auto-detected from ORM relationships) |
 
-Common attributes on every field: `label`, `help_text`, `required`, `disabled`, `read_only`, `default` (static, zero-arg callable, or `(request) -> value`), `searchable`, `orderable`, `filters`, `exclude_from_*` flags, and `extra` (free metadata dict the framework never touches).
+Common attributes on every field: `label`, `help_text`, `required`, `disabled`, `read_only`, `default` (static, zero-arg callable, or `(request) -> value`), `validators`, `searchable`, `orderable`, `filters`, `exclude_from_*` flags, and `extra` (free metadata dict the framework never touches).
+
+Server-side validation: pass `validators=[...]` on any field. A validator is a sync or async callable `(request, field, value)` that raises `ValueError` to reject the value. Built-in factories live in `starlette_admin.validators`: `length`, `number_range`, `regexp`, `email`, `url`, `uuid`, `ip_address`, `any_of`, `none_of`, `file_size`, `file_type`, `valid_image`. Empty values are only checked against `required`; cross-field rules go in the view's `validate()` override. Details in [references/fields.md](references/fields.md).
 
 ## Task router
 
@@ -154,13 +158,13 @@ Read the reference that matches the task before writing code:
 
 | Task | Reference |
 | --- | --- |
-| ModelView options, relations, object repr, inline forms, form layout | [references/views.md](references/views.md) |
+| ModelView options, relations, object repr, inline forms, inline edit, form layout | [references/views.md](references/views.md) |
 | Login, OAuth/OIDC, roles, per-field and per-action permissions | [references/auth.md](references/auth.md) |
 | Batch/row actions, lifecycle hooks, global events, flash messages | [references/actions-events.md](references/actions-events.md) |
 | List filters, filter URL format, custom `BaseFilter` | [references/filters.md](references/filters.md) |
 | File uploads, storage backends, export and import | [references/files-export-import.md](references/files-export-import.md) |
 | Dashboards, `CustomView`, widgets, custom routes and templates | [references/dashboards.md](references/dashboards.md) |
 | Admin constructor, backends and sessions, security, i18n, themes, deployment | [references/admin-config.md](references/admin-config.md) |
-| Custom field types and converter registry | [references/fields.md](references/fields.md) |
+| Field validators, custom field types, converter registry | [references/fields.md](references/fields.md) |
 
 When working inside the starlette-admin repository itself, the full documentation lives in `docs/` and runnable apps in `examples/` (numbered 01-16 plus `examples/advanced/`). Each example runs with `cd examples/<name> && uv run app.py`.

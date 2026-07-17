@@ -1,4 +1,4 @@
-# Views: ModelView, relations, inline forms, form layout
+# Views: ModelView, relations, inline edit, inline forms, form layout
 
 ## Naming and routing
 
@@ -28,6 +28,28 @@ class PostView(ModelView):
 ```
 
 Unauthorized sort parameters in the URL are silently ignored. Rows are never clickable for users failing `can_view_detail`.
+
+## Inline edit
+
+`inline_editable_fields` enables single-field editing from the list page: clicking an editable cell opens a popover with the field's standard form widget, pre-filled with the current value (x-editable style). Opt-in, disabled by default.
+
+```python
+class PostView(ModelView):
+    fields = ["id", "title", "status", "views", "published_at"]
+    inline_editable_fields = ["title", "status", "views", "published_at"]
+```
+
+Startup validation (fail fast): every listed name must exist in `fields`, must not be the primary key, must not be excluded from the list page or the edit form, and must not be a `CollectionField`, `ListField`, `ComputedField`, `FileField`, or `ImageField`. Violations raise `ValueError` at view construction.
+
+Behavior:
+
+- Permissions reuse the standard model: the popover renders and saves only when `is_accessible(request)` and `can_edit(request)` both return `True`.
+- An inline save validates and writes **only the edited field**. Its `required` check and `validators` chain run exactly as on the edit page; other fields are bypassed, so stale invalid data elsewhere never blocks the save.
+- The view's `validate()` hook still runs, but `data` contains only the edited field: guard cross-field rules with `"name" in data` checks. A rule keyed to a field the user did not edit never fires; exclude fields with cross-field invariants from `inline_editable_fields`.
+- `before_edit`, `after_edit`, and `after_edit_committed` hooks and the standard edit events fire normally, with single-field `data`/`old_data`. Detect an inline save via `request.state.action == RequestAction.INLINE_EDIT` in hooks, or `ctx.extra["inline"]` (set to `True`) in event listeners.
+- On validation failure the popover stays open with the submitted value and the error rendered under the control.
+- Widget assets (select2, flatpickr, JSONEditor, TinyMCE) load on the list page only for fields that are inline-editable; views without inline edit keep their current page footprint.
+- Custom fields work automatically if they follow the `BaseField` contract and branch on `action.is_form()` rather than `action == RequestAction.EDIT` (`INLINE_EDIT` is a form action).
 
 ## Relational data
 
