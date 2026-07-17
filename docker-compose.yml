@@ -77,55 +77,55 @@ services:
       timeout: 5s
       retries: 10
 
-  pmm-server:
-    container_name: pmm-server
-    image: percona/pmm-server:3
-    restart: always
-    volumes:
-      - pmm_data:/srv
-    environment:
-      PMM_ADMIN_PASSWORD: ${PMM_ADMIN_PASSWORD:?PMM_ADMIN_PASSWORD must be set}
-      GF_SECURITY_ADMIN_PASSWORD: ${PMM_ADMIN_PASSWORD:?PMM_ADMIN_PASSWORD must be set}
-    healthcheck:
-      test: ["CMD-SHELL", "curl -kf https://localhost:8443/v1/readyz || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+  # pmm-server:
+  #   container_name: pmm-server
+  #   image: percona/pmm-server:3
+  #   restart: always
+  #   volumes:
+  #     - pmm_data:/srv
+  #   environment:
+  #     PMM_ADMIN_PASSWORD: ${PMM_ADMIN_PASSWORD:?PMM_ADMIN_PASSWORD must be set}
+  #     GF_SECURITY_ADMIN_PASSWORD: ${PMM_ADMIN_PASSWORD:?PMM_ADMIN_PASSWORD must be set}
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -kf https://localhost:8443/v1/readyz || exit 1"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 10
 
-  pmm-client:
-    container_name: pmm-client
-    image: percona/pmm-client:3
-    restart: always
-    depends_on:
-      pmm-server:
-        condition: service_healthy
-      mysql:
-        condition: service_healthy
-    volumes:
-      - pmm_agent_data:/srv
-    environment:
-      PMM_AGENT_SERVER_ADDRESS: pmm-server:8443
-      PMM_AGENT_SERVER_USERNAME: admin
-      PMM_AGENT_SERVER_PASSWORD: ${PMM_ADMIN_PASSWORD:?PMM_ADMIN_PASSWORD must be set}
-      PMM_AGENT_SERVER_INSECURE_TLS: "1"
-      PMM_AGENT_SETUP: "1"
-      PMM_AGENT_CONFIG_FILE: config/pmm-agent.yaml
-      PMM_AGENT_SETUP_NODE_TYPE: container
-      PMM_AGENT_SETUP_NODE_NAME: mysql-demo
-      PMM_AGENT_SETUP_METRICS_MODE: push
-      PMM_AGENT_PRERUN_SCRIPT: >-
-        pmm-admin add mysql
-        --username=demo
-        --password=${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
-        --host=mysql
-        --port=3306
-        --query-source=perfschema
-        demo-mysql
+  # pmm-client:
+  #   container_name: pmm-client
+  #   image: percona/pmm-client:3
+  #   restart: always
+  #   depends_on:
+  #     pmm-server:
+  #       condition: service_healthy
+  #     mysql:
+  #       condition: service_healthy
+  #   volumes:
+  #     - pmm_agent_data:/srv
+  #   environment:
+  #     PMM_AGENT_SERVER_ADDRESS: pmm-server:8443
+  #     PMM_AGENT_SERVER_USERNAME: admin
+  #     PMM_AGENT_SERVER_PASSWORD: ${PMM_ADMIN_PASSWORD:?PMM_ADMIN_PASSWORD must be set}
+  #     PMM_AGENT_SERVER_INSECURE_TLS: "1"
+  #     PMM_AGENT_SETUP: "1"
+  #     PMM_AGENT_CONFIG_FILE: config/pmm-agent.yaml
+  #     PMM_AGENT_SETUP_NODE_TYPE: container
+  #     PMM_AGENT_SETUP_NODE_NAME: mysql-demo
+  #     PMM_AGENT_SETUP_METRICS_MODE: push
+  #     PMM_AGENT_PRERUN_SCRIPT: >-
+  #       pmm-admin add mysql
+  #       --username=demo
+  #       --password=${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
+  #       --host=mysql
+  #       --port=3306
+  #       --query-source=perfschema
+  #       demo-mysql
 
 volumes:
   mysql_data:
-  pmm_data:
-  pmm_agent_data:
+  # pmm_data:
+  # pmm_agent_data:
 
 secrets:
   github_token:
