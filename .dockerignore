@@ -13,5 +13,3 @@ Dockerfile
 docker-compose.yml
 demo.db
 uploads
-README.md
-LICENSE
