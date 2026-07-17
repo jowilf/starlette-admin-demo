@@ -1,0 +1,17 @@
+.git
+.github
+.gitignore
+.venv
+.ruff_cache
+.pre-commit-config.yaml
+.claude
+.agents
+.DS_Store
+__pycache__
+*.pyc
+Dockerfile
+docker-compose.yml
+demo.db
+uploads
+README.md
+LICENSE

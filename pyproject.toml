@@ -26,6 +26,7 @@ build-backend = "hatchling.build"
 dev = ["poethepoet>=0.48.0", "pre-commit>=4.6.0", "ruff>=0.15.21"]
 
 [tool.poe.tasks]
+dev = "fastapi dev src/starlette_admin_demo/app.py"
 format.sequence = ["ruff format", "ruff check . --fix"]
 format.default_item_type = "cmd"
 
