@@ -17,6 +17,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -39,7 +40,7 @@ class SoftDeleteMixin:
     """
 
     deleted_at: Mapped[datetime | None] = mapped_column(
-        DateTime, nullable=True, default=None
+        DateTime, nullable=True, default=None, index=True
     )
 
 
@@ -119,7 +120,7 @@ class Department(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     parent_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("departments.id"), nullable=True
+        Integer, ForeignKey("departments.id"), nullable=True, index=True
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     slug: Mapped[str] = mapped_column(String(220), nullable=False, unique=True)
@@ -151,6 +152,19 @@ class Department(Base):
 
 class Employee(SoftDeleteMixin, Base):
     __tablename__ = "employees"
+    __table_args__ = (
+        # deleted_at IS NULL matches virtually every row, so on its own it
+        # doesn't narrow anything - these composites earn their keep by
+        # making the dashboard's aggregates covering (index-only) instead of
+        # a table lookup per matched row. salary rides along on the
+        # hire_date composite purely so the annual-payroll SUM stays
+        # covering too; it isn't part of any WHERE/GROUP BY here.
+        Index("ix_employees_deleted_at_hire_date", "deleted_at", "hire_date", "salary"),
+        Index(
+            "ix_employees_deleted_at_employment_type", "deleted_at", "employment_type"
+        ),
+        Index("ix_employees_deleted_at_department_id", "deleted_at", "department_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     avatar: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
@@ -161,7 +175,10 @@ class Employee(SoftDeleteMixin, Base):
     hire_date: Mapped[date] = mapped_column(Date, nullable=False)
     job_title: Mapped[str] = mapped_column(String(200), nullable=False)
     employment_type: Mapped[EmploymentType] = mapped_column(
-        Enum(EmploymentType), default=EmploymentType.FULL_TIME, nullable=False
+        Enum(EmploymentType),
+        default=EmploymentType.FULL_TIME,
+        nullable=False,
+        index=True,
     )
     salary: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     skills: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
@@ -171,7 +188,7 @@ class Employee(SoftDeleteMixin, Base):
     is_active: Mapped[bool] = mapped_column(default=True)
 
     department_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("departments.id"), nullable=True
+        Integer, ForeignKey("departments.id"), nullable=True, index=True
     )
     department: Mapped["Department | None"] = relationship(
         "Department", back_populates="employees"
@@ -206,15 +223,23 @@ class Employee(SoftDeleteMixin, Base):
 
 class LeaveRequest(Base):
     __tablename__ = "leave_requests"
+    __table_args__ = (
+        # Covers the upcoming-leave table widget: filters on status and
+        # ranges/sorts on start_date.
+        Index("ix_leave_requests_status_start_date", "status", "start_date"),
+        # Covers the leave-by-type-and-status chart: unfiltered COUNT(*)
+        # grouped by (status, type) - a covering index-only scan.
+        Index("ix_leave_requests_status_type", "status", "type"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     employee_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("employees.id"), nullable=False
+        Integer, ForeignKey("employees.id"), nullable=False, index=True
     )
     approver_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("employees.id"), nullable=True
+        Integer, ForeignKey("employees.id"), nullable=True, index=True
     )
-    type: Mapped[LeaveType] = mapped_column(Enum(LeaveType), nullable=False)
+    type: Mapped[LeaveType] = mapped_column(Enum(LeaveType), nullable=False, index=True)
     status: Mapped[LeaveStatus] = mapped_column(
         Enum(LeaveStatus), default=LeaveStatus.PENDING, nullable=False
     )
@@ -248,18 +273,18 @@ class Project(SoftDeleteMixin, Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     department_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("departments.id"), nullable=True
+        Integer, ForeignKey("departments.id"), nullable=True, index=True
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     slug: Mapped[str] = mapped_column(String(220), nullable=False, unique=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[ProjectStatus] = mapped_column(
-        Enum(ProjectStatus), default=ProjectStatus.PLANNING, nullable=False
+        Enum(ProjectStatus), default=ProjectStatus.PLANNING, nullable=False, index=True
     )
     priority: Mapped[TaskPriority] = mapped_column(
         Enum(TaskPriority), default=TaskPriority.MEDIUM, nullable=False
     )
-    budget: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    budget: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, index=True)
     spent: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     estimated_hours: Mapped[Decimal] = mapped_column(Numeric(8, 1), default=0)
     actual_hours: Mapped[Decimal] = mapped_column(Numeric(8, 1), default=0)
@@ -287,21 +312,28 @@ class Project(SoftDeleteMixin, Base):
 
 class Task(Base):
     __tablename__ = "tasks"
+    __table_args__ = (
+        # Covers the overdue-tasks table widget. due_date leads (not
+        # status): the query ranges/sorts on due_date and only excludes 2 of
+        # 6 statuses via NOT IN, which isn't selective enough to lead an
+        # index and can't satisfy ORDER BY due_date if it did.
+        Index("ix_tasks_due_date_status", "due_date", "status"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     project_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("projects.id"), nullable=False
+        Integer, ForeignKey("projects.id"), nullable=False, index=True
     )
     assigned_to: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("employees.id"), nullable=True
+        Integer, ForeignKey("employees.id"), nullable=True, index=True
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[TaskStatus] = mapped_column(
-        Enum(TaskStatus), default=TaskStatus.BACKLOG, nullable=False
+        Enum(TaskStatus), default=TaskStatus.BACKLOG, nullable=False, index=True
     )
     priority: Mapped[TaskPriority] = mapped_column(
-        Enum(TaskPriority), default=TaskPriority.MEDIUM, nullable=False
+        Enum(TaskPriority), default=TaskPriority.MEDIUM, nullable=False, index=True
     )
     estimated_hours: Mapped[Decimal | None] = mapped_column(
         Numeric(6, 1), nullable=True
@@ -329,16 +361,25 @@ class Task(Base):
 
 class Timesheet(Base):
     __tablename__ = "timesheets"
+    __table_args__ = (
+        # Covers hours-per-month/billable-share charts: ranges on date,
+        # groups/filters on is_billable, and sums hours. hours is included
+        # so the scan is index-only (covering) - without it, a date range
+        # that isn't highly selective (e.g. "last 12 months" on a table that
+        # only spans ~18 months) can be slower than a full table scan,
+        # since every matched row needs an extra lookup just for hours.
+        Index("ix_timesheets_date_is_billable", "date", "is_billable", "hours"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     employee_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("employees.id"), nullable=False
+        Integer, ForeignKey("employees.id"), nullable=False, index=True
     )
     task_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("tasks.id"), nullable=True
+        Integer, ForeignKey("tasks.id"), nullable=True, index=True
     )
     project_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("projects.id"), nullable=False
+        Integer, ForeignKey("projects.id"), nullable=False, index=True
     )
     date: Mapped[date] = mapped_column(Date, nullable=False)
     hours: Mapped[Decimal] = mapped_column(Numeric(4, 1), nullable=False)
@@ -361,13 +402,24 @@ class Timesheet(Base):
 
 class Expense(Base):
     __tablename__ = "expenses"
+    __table_args__ = (
+        # Covers the pending-expenses table widget (filters on status, sorts
+        # on submitted_at) and the amounts-by-status chart (unfiltered SUM
+        # of total_amount grouped by status) as a covering scan.
+        Index(
+            "ix_expenses_status_submitted_at", "status", "submitted_at", "total_amount"
+        ),
+        # Covers the amounts-by-category chart: unfiltered SUM(total_amount)
+        # grouped by category, as a covering scan.
+        Index("ix_expenses_category_total_amount", "category", "total_amount"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     employee_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("employees.id"), nullable=False
+        Integer, ForeignKey("employees.id"), nullable=False, index=True
     )
     project_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("projects.id"), nullable=True
+        Integer, ForeignKey("projects.id"), nullable=True, index=True
     )
     expense_number: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
     status: Mapped[ExpenseStatus] = mapped_column(
@@ -381,7 +433,7 @@ class Expense(Base):
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     approved_by_id: Mapped[int | None] = mapped_column(
-        "approved_by", Integer, ForeignKey("employees.id"), nullable=True
+        "approved_by", Integer, ForeignKey("employees.id"), nullable=True, index=True
     )
     receipt_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -19,7 +19,7 @@ from typing import Any, ClassVar
 from uuid import uuid4
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from starlette.requests import Request
 from starlette_admin import (
     Breakpoints,
@@ -147,6 +147,20 @@ def _sql_date_format(fmt: str, column: Any) -> Any:
     return func.strftime(fmt, column)
 
 
+def _month_key(value: date) -> str:
+    """Inverse of `_month_key_to_date`: a plain `date` back to its
+    "YYYY-MM" key, matching `_sql_date_format('%Y-%m', ...)` output."""
+    return f"{value.year:04d}-{value.month:02d}"
+
+
+def _month_key_to_date(key: str) -> date:
+    """First-of-month `date` for a `_sql_date_format('%Y-%m', ...)` key like
+    "2026-03". Used to turn a month-key cutoff into a plain date comparison
+    so WHERE clauses stay sargable (indexable) instead of wrapping the
+    column in a date-formatting function."""
+    return date.fromisoformat(f"{key}-01")
+
+
 def _last_months(count: int) -> list[tuple[str, str]]:
     """Last `count` calendar months, oldest first, as (key, label) pairs;
     `key` matches `_sql_date_format('%Y-%m', ...)` output."""
@@ -233,6 +247,8 @@ class HRDashboardView(CustomView):
     async def _build_widget(self, request: Request) -> ColumnWidget:
         session: Session = request.state.session
         today = date.today()
+        month_start = today.replace(day=1)
+        month_end = today.replace(day=monthrange(today.year, today.month)[1])
 
         hires = await self._hires_sparkline(request)
         hire_counts = hires[0]["data"]
@@ -253,15 +269,13 @@ class HRDashboardView(CustomView):
         )
         billable_this_month = session.scalar(
             select(func.coalesce(func.sum(Timesheet.hours), 0)).where(
-                _sql_date_format("%Y-%m", Timesheet.date) == today.strftime("%Y-%m"),
+                Timesheet.date.between(month_start, month_end),
                 Timesheet.is_billable.is_(True),
             )
         )
 
         month_labels = [label for _, label in _last_months(12)]
         division_names = self._division_names(session)
-        month_start = today.replace(day=1)
-        month_end = today.replace(day=monthrange(today.year, today.month)[1])
 
         def stat_col(widget: StatWidget) -> Col:
             return Col(widget, breakpoints=Breakpoints(default=12, md=6, lg=3))
@@ -786,10 +800,12 @@ class HRDashboardView(CustomView):
 
     async def _hours_this_month(self, request: Request) -> str:
         session: Session = request.state.session
+        today = date.today()
+        month_start = today.replace(day=1)
+        month_end = today.replace(day=monthrange(today.year, today.month)[1])
         total = session.scalar(
             select(func.coalesce(func.sum(Timesheet.hours), 0)).where(
-                _sql_date_format("%Y-%m", Timesheet.date)
-                == date.today().strftime("%Y-%m")
+                Timesheet.date.between(month_start, month_end)
             )
         )
         return f"{total:.0f}h"
@@ -819,13 +835,14 @@ class HRDashboardView(CustomView):
     async def _hires_sparkline(self, request: Request) -> list[dict[str, Any]]:
         session: Session = request.state.session
         months = _last_months(12)
+        cutoff = _month_key_to_date(months[0][0])
         month_expr = _sql_date_format("%Y-%m", Employee.hire_date)
         counts = dict(
             session.execute(
                 select(month_expr, func.count(Employee.id))
                 .where(
                     Employee.deleted_at.is_(None),
-                    month_expr >= months[0][0],
+                    Employee.hire_date >= cutoff,
                 )
                 .group_by(month_expr)
             ).all()
@@ -835,18 +852,24 @@ class HRDashboardView(CustomView):
     async def _hours_sparkline(self, request: Request) -> list[dict[str, Any]]:
         session: Session = request.state.session
         months = _last_months(12)
-        month_expr = _sql_date_format("%Y-%m", Timesheet.date)
-        totals = dict(
-            session.execute(
-                select(month_expr, func.sum(Timesheet.hours))
-                .where(month_expr >= months[0][0])
-                .group_by(month_expr)
-            ).all()
-        )
+        cutoff = _month_key_to_date(months[0][0])
+        # Group by the raw (indexed) date instead of a month-formatting
+        # expression: it lets the DB return rows in index order and bucket
+        # into months here, rather than sorting the whole matched range to
+        # satisfy GROUP BY on a function of the column.
+        rows = session.execute(
+            select(Timesheet.date, func.sum(Timesheet.hours))
+            .where(Timesheet.date >= cutoff)
+            .group_by(Timesheet.date)
+        ).all()
+        totals: dict[str, float] = {}
+        for day, hours in rows:
+            key = _month_key(day)
+            totals[key] = totals.get(key, 0.0) + float(hours or 0)
         return [
             {
                 "name": "Hours",
-                "data": [float(totals.get(key, 0) or 0) for key, _ in months],
+                "data": [totals.get(key, 0.0) for key, _ in months],
             }
         ]
 
@@ -885,15 +908,32 @@ class HRDashboardView(CustomView):
 
         return {dep_id: climb(dep_id) for dep_id in by_id}
 
+    def _employee_headcounts(self, session: Session) -> dict[int, int]:
+        """Live employee count per `department_id`. `_headcount_by_division`
+        and `_org_tree` both need this aggregate over the (potentially
+        millions-of-rows) employees table; starlette-admin invokes each
+        widget's callback separately, so cache it on the session for the
+        life of the request instead of running it twice."""
+        cached = session.info.get("employee_headcounts")
+        if cached is None:
+            cached = dict(
+                session.execute(
+                    select(Employee.department_id, func.count(Employee.id))
+                    .where(
+                        Employee.deleted_at.is_(None),
+                        Employee.department_id.is_not(None),
+                    )
+                    .group_by(Employee.department_id)
+                ).all()
+            )
+            session.info["employee_headcounts"] = cached
+        return cached
+
     async def _headcount_by_division(self, request: Request) -> list[dict[str, Any]]:
         session: Session = request.state.session
         division_of = self._division_of(session)
         totals: dict[str, int] = dict.fromkeys(self._division_names(session), 0)
-        rows = session.execute(
-            select(Employee.department_id, func.count(Employee.id))
-            .where(Employee.deleted_at.is_(None), Employee.department_id.is_not(None))
-            .group_by(Employee.department_id)
-        ).all()
+        rows = self._employee_headcounts(session).items()
         for department_id, count in rows:
             division = division_of.get(department_id)
             if division in totals:
@@ -1011,16 +1051,19 @@ class HRDashboardView(CustomView):
     async def _hours_per_month(self, request: Request) -> list[dict[str, Any]]:
         session: Session = request.state.session
         months = _last_months(12)
-        month_expr = _sql_date_format("%Y-%m", Timesheet.date)
+        cutoff = _month_key_to_date(months[0][0])
+        # Grouping by the raw date (and is_billable) matches the covering
+        # index's column order exactly, so the DB can stream sums without
+        # sorting; bucket the ~366 resulting rows into months here instead.
         rows = session.execute(
-            select(month_expr, Timesheet.is_billable, func.sum(Timesheet.hours))
-            .where(month_expr >= months[0][0])
-            .group_by(month_expr, Timesheet.is_billable)
+            select(Timesheet.date, Timesheet.is_billable, func.sum(Timesheet.hours))
+            .where(Timesheet.date >= cutoff)
+            .group_by(Timesheet.date, Timesheet.is_billable)
         ).all()
-        totals: dict[tuple[str, bool], float] = {
-            (month, bool(billable)): float(hours or 0)
-            for month, billable, hours in rows
-        }
+        totals: dict[tuple[str, bool], float] = {}
+        for day, billable, hours in rows:
+            key = (_month_key(day), bool(billable))
+            totals[key] = totals.get(key, 0.0) + float(hours or 0)
         return [
             {
                 "name": "Billable",
@@ -1035,15 +1078,15 @@ class HRDashboardView(CustomView):
     async def _billable_share(self, request: Request) -> list[float]:
         session: Session = request.state.session
         months = _last_months(12)
-        month_expr = _sql_date_format("%Y-%m", Timesheet.date)
+        cutoff = _month_key_to_date(months[0][0])
         total = session.scalar(
             select(func.coalesce(func.sum(Timesheet.hours), 0)).where(
-                month_expr >= months[0][0]
+                Timesheet.date >= cutoff
             )
         )
         billable = session.scalar(
             select(func.coalesce(func.sum(Timesheet.hours), 0)).where(
-                month_expr >= months[0][0], Timesheet.is_billable.is_(True)
+                Timesheet.date >= cutoff, Timesheet.is_billable.is_(True)
             )
         )
         if not total:
@@ -1091,6 +1134,7 @@ class HRDashboardView(CustomView):
             .where(Employee.deleted_at.is_(None))
             .order_by(Employee.hire_date.desc())
             .limit(6)
+            .options(selectinload(Employee.department))
         ).all()
         return [
             [
@@ -1112,6 +1156,7 @@ class HRDashboardView(CustomView):
             )
             .order_by(LeaveRequest.start_date.asc())
             .limit(6)
+            .options(selectinload(LeaveRequest.employee))
         ).all()
         return [
             [
@@ -1131,6 +1176,7 @@ class HRDashboardView(CustomView):
             .where(Project.deleted_at.is_(None))
             .order_by(Project.budget.desc())
             .limit(6)
+            .options(selectinload(Project.department))
         ).all()
         return [
             [
@@ -1155,6 +1201,7 @@ class HRDashboardView(CustomView):
             )
             .order_by(Task.due_date.asc())
             .limit(6)
+            .options(selectinload(Task.project), selectinload(Task.assignee))
         ).all()
         return [
             [
@@ -1174,6 +1221,7 @@ class HRDashboardView(CustomView):
             .where(Expense.status == ExpenseStatus.SUBMITTED)
             .order_by(Expense.submitted_at.desc())
             .limit(6)
+            .options(selectinload(Expense.employee))
         ).all()
         return [
             [
@@ -1196,16 +1244,7 @@ class HRDashboardView(CustomView):
         department's stored color as card background."""
         session: Session = request.state.session
         departments = session.scalars(select(Department).order_by(Department.id)).all()
-        head_counts = dict(
-            session.execute(
-                select(Employee.department_id, func.count(Employee.id))
-                .where(
-                    Employee.deleted_at.is_(None),
-                    Employee.department_id.is_not(None),
-                )
-                .group_by(Employee.department_id)
-            ).all()
-        )
+        head_counts = self._employee_headcounts(session)
         children_of: dict[int | None, list[Department]] = {}
         for department in departments:
             children_of.setdefault(department.parent_id, []).append(department)

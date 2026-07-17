@@ -6,7 +6,7 @@ from starlette_admin.storage import LocalStorage
 APP_ENV = os.getenv("APP_ENV", "DEV")
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-change-me")
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads/")
-DATABASE_URL = os.getenv("ENGINE", "sqlite:///demo.db?check_same_thread=false")
+DATABASE_URL = os.getenv("ENGINE", "mysql+pymysql://myuser:mypassword@localhost:3309/mydb")
 
 _engine_kwargs = {
     "echo": APP_ENV != "PROD",
