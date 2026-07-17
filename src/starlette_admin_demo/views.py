@@ -472,7 +472,9 @@ class LeaveRequestView(ModelView):
         "end_time",
         DecimalField(
             "days_requested",
-            validators=[number_gt(0, message="Days requested must be greater than zero.")],
+            validators=[
+                number_gt(0, message="Days requested must be greater than zero.")
+            ],
         ),
         "reason",
         "reviewer_notes",
@@ -863,7 +865,8 @@ class TimesheetView(ModelView):
         "employee",
         "date",
         DecimalField(
-            "hours", validators=[number_gt(0, message="Hours must be greater than zero.")]
+            "hours",
+            validators=[number_gt(0, message="Hours must be greater than zero.")],
         ),
         IntegerField(
             "minutes",
