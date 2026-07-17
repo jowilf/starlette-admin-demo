@@ -73,8 +73,10 @@ from starlette_admin.contrib.sqla import InlineModelView
 from starlette_admin.contrib.sqla import ModelView as BaseModelView
 from starlette_admin.contrib.sqla.filters import IsNotNullFilter, IsNullFilter
 from starlette_admin.exceptions import ActionFailed, FormValidationError
-from starlette_admin.fields import EmailField, SlugField
+from starlette_admin.fields import DecimalField, EmailField, IntegerField, SlugField
 from starlette_admin.helpers import on_commit
+from starlette_admin.validators import email, number_range
+from validators import positive, unique
 
 # ── Soft-delete base views ───────────────────────────────────────────────────
 
@@ -166,9 +168,14 @@ class DepartmentView(ModelView):
         SlugField("slug", populate_from="name"),
         "description",
         DollarField(
-            "budget", help_text="Annual budget allocated to the department, in USD."
+            "budget",
+            help_text="Annual budget allocated to the department, in USD.",
+            validators=[number_range(min=0, message="Budget cannot be negative.")],
         ),
-        "headcount",
+        IntegerField(
+            "headcount",
+            validators=[number_range(min=0, message="Headcount cannot be negative.")],
+        ),
         ColorField("color"),
         "is_active",
         HasOne(
@@ -179,6 +186,8 @@ class DepartmentView(ModelView):
     ]
     exclude_fields_from_list = ["id", "description"]
     fields_default_sort = ["name"]
+    # Quick edits from the list page, without opening the full form.
+    inline_editable_fields = ["is_active", "headcount"]
     form_layout = [
         FieldsetWidget(legend="Identity", children=[("name", "slug"), "description"]),
         PanelWidget(
@@ -295,12 +304,26 @@ class EmployeeView(SoftDeleteModelView):
             max_size=200 * 1024,  # 200 KB
         ),
         AvatarNameField(avatars_storage=avatars_storage),
-        EmailField("email"),
+        EmailField(
+            "email",
+            validators=[
+                email(),
+                unique(
+                    Employee,
+                    Employee.email,
+                    message="An employee with this email already exists.",
+                ),
+            ],
+        ),
         "phone",
         "date_of_birth",
         "job_title",
         EmploymentTypeBadgeField("employment_type", enum=EmploymentType),
-        DollarField("salary", help_text="Annual salary in USD."),
+        DollarField(
+            "salary",
+            help_text="Annual salary in USD.",
+            validators=[positive(message="Salary must be a positive amount.")],
+        ),
         "hire_date",
         TagsField("skills", label="Skills"),
         ListField(
@@ -350,6 +373,8 @@ class EmployeeView(SoftDeleteModelView):
         "deleted_at",
     ]
     fields_default_sort = ["name"]
+    # Quick edits from the list page, without opening the full form.
+    inline_editable_fields = ["is_active", "job_title", "salary"]
     form_layout = [
         TabsWidget(
             tabs=[
@@ -382,10 +407,9 @@ class EmployeeView(SoftDeleteModelView):
     ]
 
     async def validate(self, request: Request, data: dict[str, Any]) -> None:
+        # Cross-field only: salary and email are checked by their own field
+        # validators (see the `salary`/`email` fields above).
         errors: dict[str, str] = {}
-        salary = data.get("salary")
-        if salary is not None and salary <= 0:
-            errors["salary"] = "Salary must be a positive amount."
         date_of_birth = data.get("date_of_birth")
         hire_date = data.get("hire_date")
         if date_of_birth is not None and hire_date is not None:
@@ -396,17 +420,6 @@ class EmployeeView(SoftDeleteModelView):
                 errors["date_of_birth"] = (
                     "Employee must be at least 16 years old as of the hire date."
                 )
-        email = data.get("email")
-        if email is not None:
-            # Checked here, not left to the unique constraint, so the error
-            # attaches to the `email` field instead of raising IntegrityError.
-            session: Session = request.state.session
-            query = select(Employee.id).where(Employee.email == email)
-            pk = request.query_params.get("pk")
-            if pk is not None and pk.isdigit():
-                query = query.where(Employee.id != int(pk))
-            if session.execute(query).first() is not None:
-                errors["email"] = "An employee with this email already exists."
         if errors:
             raise FormValidationError(errors)
         await super().validate(request, data)
@@ -456,13 +469,18 @@ class LeaveRequestView(ModelView):
         "end_date",
         "start_time",
         "end_time",
-        "days_requested",
+        DecimalField(
+            "days_requested",
+            validators=[positive(message="Days requested must be greater than zero.")],
+        ),
         "reason",
         "reviewer_notes",
         "reviewed_at",
     ]
     exclude_fields_from_list = ["id", "reason", "reviewer_notes"]
     fields_default_sort = [("start_date", True)]
+    # Quick edits from the list page, without opening the full form.
+    inline_editable_fields = ["status"]
     form_layout = [
         FieldsetWidget(
             legend="Request",
@@ -495,14 +513,13 @@ class LeaveRequestView(ModelView):
     actions = ["approve", "reject"]
 
     async def validate(self, request: Request, data: dict[str, Any]) -> None:
+        # Cross-field only: days_requested has its own field validator (see
+        # the `days_requested` field above).
         errors: dict[str, str] = {}
         start_date = data.get("start_date")
         end_date = data.get("end_date")
         if start_date is not None and end_date is not None and end_date < start_date:
             errors["end_date"] = "End date must be on or after the start date."
-        days_requested = data.get("days_requested")
-        if days_requested is not None and days_requested <= 0:
-            errors["days_requested"] = "Days requested must be greater than zero."
         if errors:
             raise FormValidationError(errors)
         await super().validate(request, data)
@@ -643,9 +660,15 @@ class ProjectView(SoftDeleteModelView):
         ProjectStatusBadgeField("status", enum=ProjectStatus),
         TaskPriorityBadgeField("priority", enum=TaskPriority),
         DollarField(
-            "budget", help_text="Total budget allocated to the project, in USD."
+            "budget",
+            help_text="Total budget allocated to the project, in USD.",
+            validators=[number_range(min=0, message="Budget cannot be negative.")],
         ),
-        DollarField("spent", help_text="Total amount spent on the project, in USD."),
+        DollarField(
+            "spent",
+            help_text="Total amount spent on the project, in USD.",
+            validators=[number_range(min=0, message="Spent cannot be negative.")],
+        ),
         "estimated_hours",
         "actual_hours",
         ProgressField(
@@ -668,6 +691,8 @@ class ProjectView(SoftDeleteModelView):
     ]
     inlines = [TaskInline]
     fields_default_sort = ["name"]
+    # Quick edits from the list page, without opening the full form.
+    inline_editable_fields = ["status", "priority"]
     form_layout = [
         FieldsetWidget(
             legend="Identity",
@@ -697,17 +722,13 @@ class ProjectView(SoftDeleteModelView):
     ]
 
     async def validate(self, request: Request, data: dict[str, Any]) -> None:
+        # Cross-field only: budget and spent each have their own field
+        # validator (see the `budget`/`spent` fields above).
         errors: dict[str, str] = {}
         start_date = data.get("start_date")
         end_date = data.get("end_date")
         if start_date is not None and end_date is not None and end_date < start_date:
             errors["end_date"] = "End date must be on or after the start date."
-        budget = data.get("budget")
-        if budget is not None and budget < 0:
-            errors["budget"] = "Budget cannot be negative."
-        spent = data.get("spent")
-        if spent is not None and spent < 0:
-            errors["spent"] = "Spent cannot be negative."
         if errors:
             raise FormValidationError(errors)
         await super().validate(request, data)
@@ -806,6 +827,8 @@ class TaskView(ModelView):
         "labels",
     ]
     exclude_fields_from_list = ["id", "description", "labels"]
+    # Quick edits from the list page, without opening the full form.
+    inline_editable_fields = ["status", "priority"]
     form_layout = [
         FieldsetWidget(
             legend="Details",
@@ -838,8 +861,15 @@ class TimesheetView(ModelView):
         "id",
         "employee",
         "date",
-        "hours",
-        "minutes",
+        DecimalField(
+            "hours", validators=[positive(message="Hours must be greater than zero.")]
+        ),
+        IntegerField(
+            "minutes",
+            validators=[
+                number_range(min=0, max=59, message="Minutes must be between 0 and 59.")
+            ],
+        ),
         "description",
         "is_billable",
         "hourly_rate",
@@ -849,6 +879,8 @@ class TimesheetView(ModelView):
     ]
     exclude_fields_from_list = ["id", "description"]
     fields_default_sort = [("date", True)]
+    # Quick edits from the list page, without opening the full form.
+    inline_editable_fields = ["is_billable"]
     form_layout = [
         FieldsetWidget(
             legend="Entry",
@@ -895,6 +927,8 @@ class ExpenseView(ModelView):
     exclude_fields_from_create = ["total_amount"]
     inlines = [ExpenseLineInline]
     fields_default_sort = [("submitted_at", True)]
+    # Quick edits from the list page, without opening the full form.
+    inline_editable_fields = ["status"]
     form_layout = [
         FieldsetWidget(
             legend="Details",

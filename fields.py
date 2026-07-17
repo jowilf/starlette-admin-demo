@@ -85,7 +85,11 @@ class BadgeField(EnumField):
 
     async def serialize_value(self, request: Request, value: Any) -> Any:
         label = await super().serialize_value(request, value)
-        if request.state.action in (RequestAction.EDIT, RequestAction.EXPORT):
+        if request.state.action in (
+            RequestAction.EDIT,
+            RequestAction.INLINE_EDIT,
+            RequestAction.EXPORT,
+        ):
             return label
         raw = value.value if isinstance(value, Enum) else value
         return {
