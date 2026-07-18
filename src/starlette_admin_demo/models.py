@@ -1,7 +1,10 @@
 """SQLAlchemy models for the HR module, ported from the Filament HR demo
 (filamentphp/demo, app/Models/HR). `SoftDeleteMixin` marks a model as hide-on-delete
 (Employee, Project, pair with `SoftDeleteModelView` in views.py); every table also
-carries a `search_vector` column and index, backed by the trigger infrastructure in search.py.
+carries a `search_vector` column, kept current by sqlalchemy-searchable's trigger
+machinery and indexing only that row's own columns - no related tables (see search.py
+for the handful of `@vectorizer`s that combine same-row columns, e.g. an enum's
+`status` and `priority`, into one weight group).
 """
 
 import enum
@@ -23,6 +26,8 @@ from sqlalchemy import (
     Time,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy_searchable import SearchOptions, make_searchable
+from sqlalchemy_utils import TSVectorType
 from starlette.requests import Request
 
 
@@ -30,9 +35,12 @@ class Base(DeclarativeBase):
     """Base class for every SQLAlchemy declarative model in the HR example."""
 
 
-# Deferred past `Base`: search.py imports `Base` back from this still-executing
-# module, which only resolves once `Base` already exists as an attribute here.
-from .search import search_vector_column, search_vector_index  # noqa: E402
+# Must run before any model class below attaches a `search_vector` column: it
+# listens for each mapped class's instrumentation to index its TSVectorType
+# columns, and only classes instrumented *after* this call get picked up.
+# "simple" (vs. "english") skips stemming/stopwords - good enough for name/code
+# search, and keeps a stable tokenization search.py's tests can rely on.
+make_searchable(Base.metadata, options=SearchOptions(regconfig="pg_catalog.simple"))
 
 
 class SoftDeleteMixin:
@@ -118,7 +126,6 @@ class ExpenseStatus(str, enum.Enum):
 
 class Department(Base):
     __tablename__ = "departments"
-    __table_args__ = (search_vector_index("departments"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     parent_id: Mapped[int | None] = mapped_column(
@@ -131,7 +138,15 @@ class Department(Base):
     headcount: Mapped[int] = mapped_column(Integer, default=0, index=True)
     color: Mapped[str | None] = mapped_column(String(20), nullable=True)
     is_active: Mapped[bool] = mapped_column(default=True, index=True)
-    search_vector: Mapped[str | None] = search_vector_column()
+    search_vector: Mapped[str | None] = mapped_column(
+        TSVectorType(
+            "name",
+            "slug",
+            "description",
+            weights={"name": "A", "slug": "A", "description": "B"},
+        ),
+        nullable=True,
+    )
 
     parent: Mapped["Department | None"] = relationship(
         "Department", remote_side=[id], back_populates="children"
@@ -164,7 +179,6 @@ class Employee(SoftDeleteMixin, Base):
             "ix_employees_deleted_at_employment_type", "deleted_at", "employment_type"
         ),
         Index("ix_employees_deleted_at_department_id", "deleted_at", "department_id"),
-        search_vector_index("employees"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -189,7 +203,18 @@ class Employee(SoftDeleteMixin, Base):
         "metadata", JSON, nullable=True
     )
     is_active: Mapped[bool] = mapped_column(default=True, index=True)
-    search_vector: Mapped[str | None] = search_vector_column()
+    # `email`'s content is rewritten by a `@vectorizer` in search.py, split on
+    # '@'/'.' so "doe" matches john.doe@acme.com.
+    search_vector: Mapped[str | None] = mapped_column(
+        TSVectorType(
+            "name",
+            "email",
+            "job_title",
+            "phone",
+            weights={"name": "A", "email": "B", "job_title": "B", "phone": "C"},
+        ),
+        nullable=True,
+    )
 
     department_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("departments.id"), nullable=True, index=True
@@ -234,7 +259,6 @@ class LeaveRequest(Base):
         # Covers the leave-by-type-and-status chart: unfiltered COUNT(*)
         # grouped by (status, type) - a covering index-only scan.
         Index("ix_leave_requests_status_type", "status", "type"),
-        search_vector_index("leave_requests"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -260,7 +284,16 @@ class LeaveRequest(Base):
     reviewed_at: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True, index=True
     )
-    search_vector: Mapped[str | None] = search_vector_column()
+    # `type`'s vectorizer folds `status` in too (see search.py).
+    search_vector: Mapped[str | None] = mapped_column(
+        TSVectorType(
+            "reason",
+            "type",
+            "reviewer_notes",
+            weights={"reason": "A", "type": "B", "reviewer_notes": "C"},
+        ),
+        nullable=True,
+    )
 
     employee: Mapped["Employee"] = relationship(
         "Employee", back_populates="leave_requests", foreign_keys=[employee_id]
@@ -280,7 +313,6 @@ class LeaveRequest(Base):
 
 class Project(SoftDeleteMixin, Base):
     __tablename__ = "projects"
-    __table_args__ = (search_vector_index("projects"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     department_id: Mapped[int | None] = mapped_column(
@@ -302,7 +334,17 @@ class Project(SoftDeleteMixin, Base):
     start_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     plan: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    search_vector: Mapped[str | None] = search_vector_column()
+    # `name`'s vectorizer folds `slug` in; `status`'s folds `priority` in
+    # (see search.py).
+    search_vector: Mapped[str | None] = mapped_column(
+        TSVectorType(
+            "name",
+            "status",
+            "description",
+            weights={"name": "A", "status": "B", "description": "C"},
+        ),
+        nullable=True,
+    )
 
     department: Mapped["Department | None"] = relationship(
         "Department", back_populates="projects"
@@ -328,7 +370,6 @@ class Task(Base):
         # Covers the overdue-tasks table widget. due_date leads: the NOT IN on
         # status excludes only 2 of 6 values, too unselective to lead the index.
         Index("ix_tasks_due_date_status", "due_date", "status"),
-        search_vector_index("tasks"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -356,7 +397,16 @@ class Task(Base):
     )
     labels: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     sort: Mapped[int] = mapped_column(Integer, default=0)
-    search_vector: Mapped[str | None] = search_vector_column()
+    # `status`'s vectorizer folds `priority` in (see search.py).
+    search_vector: Mapped[str | None] = mapped_column(
+        TSVectorType(
+            "title",
+            "status",
+            "description",
+            weights={"title": "A", "status": "B", "description": "C"},
+        ),
+        nullable=True,
+    )
 
     project: Mapped["Project"] = relationship("Project", back_populates="tasks")
     assignee: Mapped["Employee | None"] = relationship(
@@ -379,7 +429,6 @@ class Timesheet(Base):
         # Covers hours-per-month/billable-share charts (ranges on date, groups on
         # is_billable, sums hours); hours rides along so the scan stays index-only.
         Index("ix_timesheets_date_is_billable", "date", "is_billable", "hours"),
-        search_vector_index("timesheets"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -399,7 +448,9 @@ class Timesheet(Base):
     is_billable: Mapped[bool] = mapped_column(default=True)
     hourly_rate: Mapped[Decimal] = mapped_column(Numeric(8, 2), default=0, index=True)
     total_cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0, index=True)
-    search_vector: Mapped[str | None] = search_vector_column()
+    search_vector: Mapped[str | None] = mapped_column(
+        TSVectorType("description", weights={"description": "A"}), nullable=True
+    )
 
     employee: Mapped["Employee"] = relationship("Employee", back_populates="timesheets")
     task: Mapped["Task | None"] = relationship("Task", back_populates="timesheets")
@@ -424,7 +475,6 @@ class Expense(Base):
         # Covers the amounts-by-category chart: unfiltered SUM(total_amount)
         # grouped by category, as a covering scan.
         Index("ix_expenses_category_total_amount", "category", "total_amount"),
-        search_vector_index("expenses"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -455,8 +505,17 @@ class Expense(Base):
     receipt_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     # Hyphenated numbers like EXP-2024-0001 tokenize into searchable parts
-    # (exp, 2024, 0001) as well as the whole token.
-    search_vector: Mapped[str | None] = search_vector_column()
+    # (exp, 2024, 0001) as well as the whole token. `status`'s vectorizer folds
+    # `category`/`description` in (see search.py).
+    search_vector: Mapped[str | None] = mapped_column(
+        TSVectorType(
+            "expense_number",
+            "status",
+            "notes",
+            weights={"expense_number": "A", "status": "B", "notes": "C"},
+        ),
+        nullable=True,
+    )
 
     employee: Mapped["Employee"] = relationship(
         "Employee", back_populates="expenses", foreign_keys=[employee_id]
@@ -479,7 +538,6 @@ class Expense(Base):
 
 class ExpenseLine(Base):
     __tablename__ = "expense_lines"
-    __table_args__ = (search_vector_index("expense_lines"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     expense_id: Mapped[int] = mapped_column(
@@ -490,9 +548,18 @@ class ExpenseLine(Base):
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     date: Mapped[date] = mapped_column(Date, nullable=False)
-    search_vector: Mapped[str | None] = search_vector_column()
+    search_vector: Mapped[str | None] = mapped_column(
+        TSVectorType("description", weights={"description": "A"}), nullable=True
+    )
 
     expense: Mapped["Expense"] = relationship("Expense", back_populates="expense_lines")
 
     async def __admin_repr__(self, request: Request) -> str:
         return f"{self.description} x{self.quantity}"
+
+
+# Registers the `@vectorizer`s that combine a few models' same-row columns (see
+# search.py); must come after every model class exists, hence the trailing
+# position. Importing this module is enough to wire up search for every model -
+# nothing else needs to import search.py directly.
+from . import search  # noqa: E402, F401

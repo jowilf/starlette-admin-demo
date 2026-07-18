@@ -1340,6 +1340,31 @@ wheels = [
 ]
 
 [[package]]
+name = "sqlalchemy-searchable"
+version = "3.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "sqlalchemy" },
+    { name = "sqlalchemy-utils" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f8/b8/dbd4aad51bdc9607ac8f5f50e762a1053ac65c926672eb83cdb6f0ce1f25/sqlalchemy_searchable-3.0.0.tar.gz", hash = "sha256:6bed911f2cb6c9b90383a082446c7245d4b9df0dbb9f8b25c2325f717b85505b", size = 26631, upload-time = "2026-02-16T14:20:00.757Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2d/8e/99c2dd64524ac6d3d713863a441c2797a7039c273350b5c73bf303531943/sqlalchemy_searchable-3.0.0-py3-none-any.whl", hash = "sha256:7b92d3137e0c30044df3e590cfc1140199f76fe0e7dfba9f523724ed2dc5be6b", size = 9310, upload-time = "2026-02-16T14:19:59.33Z" },
+]
+
+[[package]]
+name = "sqlalchemy-utils"
+version = "0.42.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "sqlalchemy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0f/7d/eb9565b6a49426552a5bf5c57e7c239c506dc0e4e5315aec6d1e8241dc7c/sqlalchemy_utils-0.42.1.tar.gz", hash = "sha256:881f9cd9e5044dc8f827bccb0425ce2e55490ce44fc0bb848c55cc8ee44cc02e", size = 130789, upload-time = "2025-12-13T03:14:13.591Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7c/25/7400c18c3ee97914cc99c90007795c00a4ec5b60c853b49db7ba24d11179/sqlalchemy_utils-0.42.1-py3-none-any.whl", hash = "sha256:243cfe1b3a1dae3c74118ae633f1d1e0ed8c787387bc33e556e37c990594ac80", size = 91761, upload-time = "2025-12-13T03:14:15.014Z" },
+]
+
+[[package]]
 name = "starlette"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1377,6 +1402,7 @@ dependencies = [
     { name = "psycopg", extra = ["binary", "pool"] },
     { name = "redis" },
     { name = "sqlalchemy" },
+    { name = "sqlalchemy-searchable" },
     { name = "starlette-admin" },
 ]
 
@@ -1398,6 +1424,7 @@ requires-dist = [
     { name = "psycopg", extras = ["binary", "pool"], specifier = ">=3.3.4" },
     { name = "redis", specifier = ">=6.4.0" },
     { name = "sqlalchemy", specifier = ">=2.0.51" },
+    { name = "sqlalchemy-searchable", specifier = ">=3.0.0" },
     { name = "starlette-admin", git = "https://github.com/jowilf/starlette-admin-next.git?rev=0bbb350a35f08a45ecfd7ccb33e4ad6ac9d28d41" },
 ]
 

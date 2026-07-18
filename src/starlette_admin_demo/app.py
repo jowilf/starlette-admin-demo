@@ -32,7 +32,6 @@ from .models import (
     Task,
     Timesheet,
 )
-from .search import SearchRestampSubscriber
 from .views import (
     DepartmentView,
     EmployeeView,
@@ -95,8 +94,6 @@ admin.add_view(AuditLogView(AuditLog, icon="fa fa-clipboard-list"))
 admin.events.subscribe(AuditSubscriber())
 # Triggers an out-of-band dashboard cache refresh on the same events (see cache.py).
 admin.events.subscribe(DashboardCacheSubscriber())
-# Triggers the search-restamp outbox drain on edit/import (see search.py).
-admin.events.subscribe(SearchRestampSubscriber())
 
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
