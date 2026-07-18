@@ -38,4 +38,4 @@ format.sequence = ["ruff format", "ruff check . --fix"]
 format.default_item_type = "cmd"
 
 [tool.uv.sources]
-starlette-admin = { git = "https://github.com/jowilf/starlette-admin-next.git", rev = "0bbb350a35f08a45ecfd7ccb33e4ad6ac9d28d41" }
+starlette-admin = { git = "https://github.com/jowilf/starlette-admin-next.git", rev = "74102f5b1f4c72a6ae381a7adee1021d072a62d6" }

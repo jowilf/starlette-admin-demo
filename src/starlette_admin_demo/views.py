@@ -951,9 +951,9 @@ class TimesheetView(ModelView):
         "task",
         "project",
     ]
-    exclude_fields_from_list = ["id", "description"]
+    exclude_fields_from_list = ["id", "project"]
     fields_default_sort = [("date", True)]
-    # search_vector also covers list-excluded description and folds in the employee, task and project names.
+    # search_vector also covers description and folds in the employee, task and project names.
     searchable_fields = [
         "date",
         "hours",
@@ -984,6 +984,7 @@ class TimesheetView(ModelView):
             ],
         ),
     ]
+    search_auto_submit = False
 
 
 # ── Expense ──────────────────────────────────────────────────────────────────
