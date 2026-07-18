@@ -7,7 +7,7 @@ services:
         - github_token
     restart: always
     environment:
-      WORKERS: ${WORKERS:1}
+      WORKERS: ${WORKERS:?WORKERS must be set}
       UPLOAD_DIR: uploads/
       ENGINE: postgresql+psycopg://demo:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/demo
       APP_ENV: PROD
