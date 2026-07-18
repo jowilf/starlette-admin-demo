@@ -61,6 +61,9 @@ admin = Admin(
     title="Example: HR",
     secret_key=SECRET_KEY,
     templates_dir="templates",
+    static_dir="static",
+    logo_url='/static/logo.svg',
+    login_logo_url='/static/login_logo.svg',
     index_view=HRDashboardView(),
     auth_provider=MyAuthProvider(),
     # Deliberately strict, low limits so the "capacity exceeded" errors are easy to demo.

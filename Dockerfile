@@ -30,4 +30,6 @@ COPY --from=builder /app /app
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-CMD ["fastapi", "run", "src/starlette_admin_demo/app.py", "--workers", "8", "--port", "8000", "--forwarded-allow-ips", "*"]
+ENV WORKERS=1
+
+CMD ["sh", "-c", "fastapi run src/starlette_admin_demo/app.py --workers ${WORKERS} --port 8000 --forwarded-allow-ips '*'"]
