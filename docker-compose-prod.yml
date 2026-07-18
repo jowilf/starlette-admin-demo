@@ -55,25 +55,6 @@ services:
       redis:
         condition: service_healthy
 
-  celery-flower:
-    container_name: celery_flower
-    build:
-      context: .
-      secrets:
-        - github_token
-    restart: always
-    command: ["celery", "-A", "starlette_admin_demo.celery_app", "flower", "--port=5555"]
-    ports:
-      - "5555:5555"
-    environment:
-      ENGINE: postgresql+psycopg://demo:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/demo
-      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
   postgres:
     container_name: postgres
     image: postgres:17-alpine
