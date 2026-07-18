@@ -1,74 +1,74 @@
 services:
-  # starlette_admin_demo:
-  #   container_name: starlette_admin_demo
-  #   build:
-  #     context: .
-  #     secrets:
-  #       - github_token
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8000:8000"
-  #   environment:
-  #     ENGINE: postgresql+psycopg://demo:demo@postgres:5432/demo
-  #     REDIS_URL: redis://redis:6379/0
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
+  starlette_admin_demo:
+    container_name: starlette_admin_demo
+    build:
+      context: .
+      secrets:
+        - github_token
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      ENGINE: postgresql+psycopg://demo:demo@postgres:5432/demo
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
-  # celery-worker:
-  #   container_name: celery_worker
-  #   build:
-  #     context: .
-  #     secrets:
-  #       - github_token
-  #   restart: unless-stopped
-  #   command: ["celery", "-A", "starlette_admin_demo.celery_app", "worker", "--loglevel=info"]
-  #   environment:
-  #     ENGINE: postgresql+psycopg://demo:demo@postgres:5432/demo
-  #     REDIS_URL: redis://redis:6379/0
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
+  celery-worker:
+    container_name: celery_worker
+    build:
+      context: .
+      secrets:
+        - github_token
+    restart: unless-stopped
+    command: ["celery", "-A", "starlette_admin_demo.celery_app", "worker", "--loglevel=info"]
+    environment:
+      ENGINE: postgresql+psycopg://demo:demo@postgres:5432/demo
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
-  # celery-beat:
-  #   container_name: celery_beat
-  #   build:
-  #     context: .
-  #     secrets:
-  #       - github_token
-  #   restart: unless-stopped
-  #   command: ["celery", "-A", "starlette_admin_demo.celery_app", "beat", "--loglevel=info"]
-  #   environment:
-  #     ENGINE: postgresql+psycopg://demo:demo@postgres:5432/demo
-  #     REDIS_URL: redis://redis:6379/0
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
+  celery-beat:
+    container_name: celery_beat
+    build:
+      context: .
+      secrets:
+        - github_token
+    restart: unless-stopped
+    command: ["celery", "-A", "starlette_admin_demo.celery_app", "beat", "--loglevel=info"]
+    environment:
+      ENGINE: postgresql+psycopg://demo:demo@postgres:5432/demo
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
-  # celery-flower:
-  #   container_name: celery_flower
-  #   build:
-  #     context: .
-  #     secrets:
-  #       - github_token
-  #   restart: unless-stopped
-  #   command: ["celery", "-A", "starlette_admin_demo.celery_app", "flower", "--port=5555"]
-  #   ports:
-  #     - "5555:5555"
-  #   environment:
-  #     ENGINE: postgresql+psycopg://demo:demo@postgres:5432/demo
-  #     REDIS_URL: redis://redis:6379/0
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
+  celery-flower:
+    container_name: celery_flower
+    build:
+      context: .
+      secrets:
+        - github_token
+    restart: unless-stopped
+    command: ["celery", "-A", "starlette_admin_demo.celery_app", "flower", "--port=5555"]
+    ports:
+      - "5555:5555"
+    environment:
+      ENGINE: postgresql+psycopg://demo:demo@postgres:5432/demo
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   postgres:
     container_name: postgres
