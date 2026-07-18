@@ -1,18 +1,14 @@
-"""Celery app for the demo's background work: keeping the dashboard cache
-warm (see cache.py, stats.py).
+"""Celery app for the demo's background work: keeping the dashboard cache warm (see cache.py, stats.py).
 
-`refresh_dashboard_stats` runs `cache.py`'s `refresh_all` on a schedule set by Celery
-Beat (`REFRESH_INTERVAL`). It's wrapped as `async def` (it shares starlette-admin's
-async callback interface), but a Celery task must be sync, so it's driven with
-`asyncio.run`.
+`refresh_dashboard_stats` runs `cache.py`'s `refresh_all` on a schedule set by Celery Beat, driven
+synchronously via the event loop since Celery tasks can't be async.
 """
 
 import asyncio
 
 from celery import Celery
 
-# Imported for its `@precomputed_stat` side effect: registers every stats.py
-# function into cache.py's `_REGISTRY` so this worker/beat process has something to run.
+# Imported for its `@precomputed_stat` side effect, registering every stats.py function into cache.py's `_REGISTRY`.
 from . import stats  # noqa: F401
 from .cache import REDIS_URL, REFRESH_INTERVAL, close_redis, refresh_all
 

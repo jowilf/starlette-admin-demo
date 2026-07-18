@@ -1,9 +1,4 @@
-"""Basic username/password authentication for the admin.
-
-Two hardcoded users: `admin` (full access) and `reader` (read-only, enforced
-in `views.ModelView.can_create/can_edit/can_delete`). Both use "password" as
-their password.
-"""
+"""Basic username/password authentication for the admin, with two hardcoded users: `admin` (full access) and `reader` (read-only, enforced in `views.ModelView.can_create/can_edit/can_delete`)."""
 
 from dataclasses import dataclass
 

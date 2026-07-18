@@ -1,8 +1,6 @@
-"""Dashboard query functions (see `dashboard.py`). Each is decorated with
-`@precomputed_stat` (see cache.py), which registers the undecorated `async def
-foo(session)` for a Celery task to run into Redis, and rebinds the module-level name
-to a read-only `async def foo(request)` wrapper - a plain Redis read, never a query -
-which is what `dashboard.py` actually calls.
+"""Dashboard query functions (see `dashboard.py`), each decorated with `@precomputed_stat` (see cache.py).
+
+The decorator registers the undecorated function for a Celery task to run into Redis, and rebinds the module-level name to a read-only wrapper that `dashboard.py` actually calls.
 """
 
 from calendar import monthrange
@@ -54,30 +52,27 @@ _TO_CHAR_FORMATS = {"%Y-%m": "YYYY-MM", "%Y": "YYYY"}
 
 
 def _sql_date_format(fmt: str, column: Any) -> Any:
-    """Format a date column with `%Y`/`%m` specifiers, dialect-agnostic:
-    SQLite's `strftime(fmt, col)` vs PostgreSQL's `to_char(col, fmt)`."""
+    """Format a date column with `%Y`/`%m` specifiers, dialect-agnostic between SQLite's `strftime` and PostgreSQL's `to_char`."""
     if engine.dialect.name == "postgresql":
         return func.to_char(column, _TO_CHAR_FORMATS[fmt])
     return func.strftime(fmt, column)
 
 
 def _month_key(value: date) -> str:
-    """Inverse of `_month_key_to_date`: a plain `date` back to its
-    "YYYY-MM" key, matching `_sql_date_format('%Y-%m', ...)` output."""
+    """Inverse of `_month_key_to_date`: a plain `date` back to its "YYYY-MM" key, matching `_sql_date_format('%Y-%m', ...)` output."""
     return f"{value.year:04d}-{value.month:02d}"
 
 
 def _month_key_to_date(key: str) -> date:
-    """First-of-month `date` for a `_sql_date_format('%Y-%m', ...)` key like
-    "2026-03". Used to turn a month-key cutoff into a plain date comparison
-    so WHERE clauses stay sargable (indexable) instead of wrapping the
-    column in a date-formatting function."""
+    """First-of-month `date` for a `_sql_date_format('%Y-%m', ...)` key like "2026-03".
+
+    Turns a month-key cutoff into a plain date comparison so WHERE clauses stay sargable instead of wrapping the column in a date-formatting function.
+    """
     return date.fromisoformat(f"{key}-01")
 
 
 def _last_months(count: int) -> list[tuple[str, str]]:
-    """Last `count` calendar months, oldest first, as (key, label) pairs;
-    `key` matches `_sql_date_format('%Y-%m', ...)` output."""
+    """Last `count` calendar months, oldest first, as (key, label) pairs; `key` matches `_sql_date_format('%Y-%m', ...)` output."""
     year, month = date.today().year, date.today().month
     months: list[tuple[str, str]] = []
     for _ in range(count):
@@ -257,8 +252,7 @@ async def hires_sparkline(session: Session) -> list[dict[str, Any]]:
 async def hours_sparkline(session: Session) -> list[dict[str, Any]]:
     months = _last_months(12)
     cutoff = _month_key_to_date(months[0][0])
-    # Group by the raw (indexed) date, not a month-formatting expression, so the DB
-    # can stream in index order instead of sorting the whole range; bucket into months here.
+    # Group by the raw (indexed) date, not a month-formatting expression, so the DB can stream in index order instead of sorting; bucketed into months here.
     rows = session.execute(
         select(Timesheet.date, func.sum(Timesheet.hours))
         .where(Timesheet.date >= cutoff)
@@ -280,9 +274,10 @@ async def hours_sparkline(session: Session) -> list[dict[str, Any]]:
 
 
 def _division_names_query(session: Session) -> list[str]:
-    """Top level division names (the root's direct children), by id order. A plain
-    helper, not `@precomputed_stat`-decorated: the decorated `division_names` would hit
-    its Redis-reading wrapper instead of running the query if called from here."""
+    """Top level division names (the root's direct children), by id order.
+
+    A plain helper, not `@precomputed_stat`-decorated, since the decorated `division_names` would hit its Redis-reading wrapper instead of running the query.
+    """
     root_id = session.scalar(
         select(Department.id).where(Department.parent_id.is_(None))
     )
@@ -301,8 +296,7 @@ async def division_names(session: Session) -> list[str]:
 
 
 def _division_of(session: Session) -> dict[int, str]:
-    """Map every department id to the name of its top level division. The root
-    department maps to itself, so rows attached directly to it still land in a bucket."""
+    """Map every department id to the name of its top level division; the root department maps to itself so rows attached directly to it still land in a bucket."""
     rows = session.execute(
         select(Department.id, Department.name, Department.parent_id)
     ).all()
@@ -319,8 +313,7 @@ def _division_of(session: Session) -> dict[int, str]:
 
 
 def _employee_headcounts(session: Session) -> dict[int, int]:
-    """Live employee count per `department_id`, cached on the session so a single
-    `refresh_all` pass only runs this aggregate once even though multiple stats need it."""
+    """Live employee count per `department_id`, cached on the session so a single `refresh_all` pass only runs this aggregate once even though multiple stats need it."""
     cached = session.info.get("employee_headcounts")
     if cached is None:
         cached = dict(
@@ -482,9 +475,7 @@ async def budget_by_division(session: Session) -> list[dict[str, Any]]:
 async def hours_per_month(session: Session) -> list[dict[str, Any]]:
     months = _last_months(12)
     cutoff = _month_key_to_date(months[0][0])
-    # Grouping by the raw date (and is_billable) matches the covering
-    # index's column order exactly, so the DB can stream sums without
-    # sorting; bucket the ~366 resulting rows into months here instead.
+    # Grouping by the raw date (and is_billable) matches the covering index's column order, so the DB can stream sums without sorting; bucketed into months here.
     rows = session.execute(
         select(Timesheet.date, Timesheet.is_billable, func.sum(Timesheet.hours))
         .where(Timesheet.date >= cutoff)
@@ -684,9 +675,7 @@ async def pending_expenses(session: Session) -> list[list[Any]]:
     default={"id": "empty", "data": {"name": "No departments"}, "children": []},
 )
 async def org_tree(session: Session) -> dict[str, Any]:
-    """Nested department tree in the shape ApexTree renders: each node
-    shows name, headcount (self + descendants), budget, and the
-    department's stored color as card background."""
+    """Nested department tree in the shape ApexTree renders: each node shows name, headcount (self + descendants), budget, and the department's stored color as card background."""
     departments = session.scalars(select(Department).order_by(Department.id)).all()
     head_counts = _employee_headcounts(session)
     children_of: dict[int | None, list[Department]] = {}

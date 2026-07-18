@@ -1,10 +1,7 @@
-"""SQLAlchemy models for the HR module, ported from the Filament HR demo
-(filamentphp/demo, app/Models/HR). `SoftDeleteMixin` marks a model as hide-on-delete
-(Employee, Project, pair with `SoftDeleteModelView` in views.py); every table also
-carries a `search_vector` column, kept current by sqlalchemy-searchable's trigger
-machinery and indexing only that row's own columns - no related tables (see search.py
-for the handful of `@vectorizer`s that combine same-row columns, e.g. an enum's
-`status` and `priority`, into one weight group).
+"""SQLAlchemy models for the HR module, ported from the Filament HR demo (filamentphp/demo, app/Models/HR).
+
+`SoftDeleteMixin` marks a model as hide-on-delete, and every table carries a `search_vector`
+column kept current by sqlalchemy-searchable's trigger machinery (see search.py).
 """
 
 import enum
@@ -35,18 +32,13 @@ class Base(DeclarativeBase):
     """Base class for every SQLAlchemy declarative model in the HR example."""
 
 
-# Must run before any model class below attaches a `search_vector` column: it
-# listens for each mapped class's instrumentation to index its TSVectorType
-# columns, and only classes instrumented *after* this call get picked up.
-# "simple" (vs. "english") skips stemming/stopwords - good enough for name/code
-# search, and keeps a stable tokenization search.py's tests can rely on.
+# Must run before any model class below attaches a `search_vector` column, since only classes
+# instrumented after this call get indexed; "simple" skips stemming for stable tokenization.
 make_searchable(Base.metadata, options=SearchOptions(regconfig="pg_catalog.simple"))
 
 
 class SoftDeleteMixin:
-    """Adds `deleted_at`: NULL means live, any other value means deleted through the
-    admin. Pair with `SoftDeleteModelView` (views.py) so list/count queries hide
-    trashed rows and delete stamps this instead of running DELETE."""
+    """Adds `deleted_at`; pair with `SoftDeleteModelView` (views.py) so deletes stamp this column instead of running DELETE."""
 
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True, default=None, index=True
@@ -171,9 +163,7 @@ class Department(Base):
 class Employee(SoftDeleteMixin, Base):
     __tablename__ = "employees"
     __table_args__ = (
-        # `deleted_at IS NULL` alone doesn't narrow anything (matches virtually every
-        # row); these composites earn their keep by making the dashboard's aggregates
-        # covering (index-only) instead of a table lookup per matched row.
+        # These composites make the dashboard's aggregates covering (index-only) instead of a table lookup per row.
         Index("ix_employees_deleted_at_hire_date", "deleted_at", "hire_date", "salary"),
         Index(
             "ix_employees_deleted_at_employment_type", "deleted_at", "employment_type"
@@ -203,8 +193,7 @@ class Employee(SoftDeleteMixin, Base):
         "metadata", JSON, nullable=True
     )
     is_active: Mapped[bool] = mapped_column(default=True, index=True)
-    # `email`'s content is rewritten by a `@vectorizer` in search.py, split on
-    # '@'/'.' so "doe" matches john.doe@acme.com.
+    # `email`'s content is rewritten by a `@vectorizer` in search.py so "doe" matches john.doe@acme.com.
     search_vector: Mapped[str | None] = mapped_column(
         TSVectorType(
             "name",
@@ -253,11 +242,9 @@ class Employee(SoftDeleteMixin, Base):
 class LeaveRequest(Base):
     __tablename__ = "leave_requests"
     __table_args__ = (
-        # Covers the upcoming-leave table widget: filters on status and
-        # ranges/sorts on start_date.
+        # Covers the upcoming-leave table widget, which filters on status and sorts on start_date.
         Index("ix_leave_requests_status_start_date", "status", "start_date"),
-        # Covers the leave-by-type-and-status chart: unfiltered COUNT(*)
-        # grouped by (status, type) - a covering index-only scan.
+        # Covers the leave-by-type-and-status chart as an index-only scan.
         Index("ix_leave_requests_status_type", "status", "type"),
     )
 
@@ -284,7 +271,7 @@ class LeaveRequest(Base):
     reviewed_at: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True, index=True
     )
-    # `type`'s vectorizer folds `status` in too (see search.py).
+    # `type`'s vectorizer folds `status` in too; see search.py.
     search_vector: Mapped[str | None] = mapped_column(
         TSVectorType(
             "reason",
@@ -334,8 +321,7 @@ class Project(SoftDeleteMixin, Base):
     start_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     plan: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    # `name`'s vectorizer folds `slug` in; `status`'s folds `priority` in
-    # (see search.py).
+    # `name`'s vectorizer folds `slug` in, and `status`'s folds `priority` in; see search.py.
     search_vector: Mapped[str | None] = mapped_column(
         TSVectorType(
             "name",
@@ -367,8 +353,7 @@ class Project(SoftDeleteMixin, Base):
 class Task(Base):
     __tablename__ = "tasks"
     __table_args__ = (
-        # Covers the overdue-tasks table widget. due_date leads: the NOT IN on
-        # status excludes only 2 of 6 values, too unselective to lead the index.
+        # Covers the overdue-tasks table widget; due_date leads since status is too unselective to.
         Index("ix_tasks_due_date_status", "due_date", "status"),
     )
 
@@ -397,7 +382,7 @@ class Task(Base):
     )
     labels: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     sort: Mapped[int] = mapped_column(Integer, default=0)
-    # `status`'s vectorizer folds `priority` in (see search.py).
+    # `status`'s vectorizer folds `priority` in; see search.py.
     search_vector: Mapped[str | None] = mapped_column(
         TSVectorType(
             "title",
@@ -426,8 +411,7 @@ class Task(Base):
 class Timesheet(Base):
     __tablename__ = "timesheets"
     __table_args__ = (
-        # Covers hours-per-month/billable-share charts (ranges on date, groups on
-        # is_billable, sums hours); hours rides along so the scan stays index-only.
+        # Covers the hours-per-month/billable-share charts as an index-only scan.
         Index("ix_timesheets_date_is_billable", "date", "is_billable", "hours"),
     )
 
@@ -466,14 +450,11 @@ class Timesheet(Base):
 class Expense(Base):
     __tablename__ = "expenses"
     __table_args__ = (
-        # Covers the pending-expenses table widget (filters on status, sorts
-        # on submitted_at) and the amounts-by-status chart (unfiltered SUM
-        # of total_amount grouped by status) as a covering scan.
+        # Covers the pending-expenses table widget and the amounts-by-status chart as a covering scan.
         Index(
             "ix_expenses_status_submitted_at", "status", "submitted_at", "total_amount"
         ),
-        # Covers the amounts-by-category chart: unfiltered SUM(total_amount)
-        # grouped by category, as a covering scan.
+        # Covers the amounts-by-category chart as a covering scan.
         Index("ix_expenses_category_total_amount", "category", "total_amount"),
     )
 
@@ -504,9 +485,8 @@ class Expense(Base):
     )
     receipt_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
-    # Hyphenated numbers like EXP-2024-0001 tokenize into searchable parts
-    # (exp, 2024, 0001) as well as the whole token. `status`'s vectorizer folds
-    # `category`/`description` in (see search.py).
+    # Hyphenated numbers like EXP-2024-0001 tokenize into parts as well as the whole token.
+    # `status`'s vectorizer folds `category`/`description` in; see search.py.
     search_vector: Mapped[str | None] = mapped_column(
         TSVectorType(
             "expense_number",
@@ -558,8 +538,5 @@ class ExpenseLine(Base):
         return f"{self.description} x{self.quantity}"
 
 
-# Registers the `@vectorizer`s that combine a few models' same-row columns (see
-# search.py); must come after every model class exists, hence the trailing
-# position. Importing this module is enough to wire up search for every model -
-# nothing else needs to import search.py directly.
+# Registers the `@vectorizer`s from search.py; must come after every model class exists.
 from . import search  # noqa: E402, F401

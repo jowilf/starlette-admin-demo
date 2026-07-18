@@ -47,8 +47,7 @@ from .views import (
 async def lifespan(_: Starlette):
     # Creates tables only; seeding is handled separately by seed.py.
     Base.metadata.create_all(engine)
-    # Kick off one immediate cache refresh so the dashboard isn't empty
-    # until Celery Beat's first tick (see cache.py).
+    # Kick off one immediate cache refresh so the dashboard isn't empty until Celery Beat's first tick (see cache.py).
     trigger_dashboard_refresh()
     async with dashboard_cache_lifespan():
         yield

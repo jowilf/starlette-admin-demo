@@ -1,16 +1,12 @@
-"""Standalone seed script: generates a Faker dataset and writes it straight to the
-database through the app's own SQLAlchemy table metadata (no running app or HTTP
-round trip needed).
+"""Standalone seed script: generates a Faker dataset and writes it straight to the database through the app's own SQLAlchemy table metadata.
 
 Usage:
     uv run seed                # default volumes
     uv run seed --scale 5      # about five times as much data
     uv run seed --scale 3500   # roughly a million employees
 
-Built to stay fast at millions of rows: rows are plain dicts pushed through Core
-INSERT executemany in `CHUNK_SIZE` batches (`insert_chunked`), with primary keys
-assigned up front (`next_id`) so foreign keys are plain integer draws and no
-RETURNING round trip is needed.
+Stays fast at millions of rows by pushing plain dicts through Core INSERT executemany in
+`CHUNK_SIZE` batches, with primary keys assigned up front so no RETURNING round trip is needed.
 """
 
 import argparse
@@ -58,8 +54,7 @@ AVATAR_UPLOAD_FOLDER = "avatars"
 # Rows per executemany batch; also how often progress prints and commits run.
 CHUNK_SIZE = 10_000
 
-# Fixed org chart: (name, parent name, color); parents listed before children so
-# each parent's id exists when its child row is built (see `pick_department`).
+# Fixed org chart: (name, parent name, color), with parents listed before children so each parent's id exists when its child row is built.
 ORG_CHART: list[tuple[str, str | None, str]] = [
     ("Executive", None, "#6b7280"),
     ("Engineering", "Executive", "#3b82f6"),
@@ -105,8 +100,7 @@ EMPLOYMENT_TYPES = [
     ("full_time", 72), ("part_time", 10), ("contractor", 12), ("intern", 6),
 ]  # fmt: skip
 
-# Combined with a drawn `pools.jobs` entry so job titles don't collapse onto
-# Faker's ~639-word job corpus alone (see `build_employee_row`).
+# Combined with a drawn `pools.jobs` entry so job titles don't collapse onto Faker's ~639-word job corpus alone.
 JOB_LEVELS = [
     ("", 55), ("Senior ", 20), ("Lead ", 8), ("Junior ", 8),
     ("Associate ", 5), ("Principal ", 2), ("Staff ", 2),
@@ -229,9 +223,7 @@ def rand_date(rng: random.Random, days_back: int, days_forward: int = 0) -> date
 
 
 def pool_size(base: int, scale: float, cap: int) -> int:
-    """Grow a text pool with `scale` so the same Faker value doesn't turn up
-    thousands of times at large volumes; `cap` bounds pool generation to a
-    couple seconds even at the highest supported scale."""
+    """Grow a text pool with `scale` so the same Faker value doesn't repeat thousands of times at large volumes; `cap` bounds generation time at the highest scale."""
     return min(cap, max(base, round(base * scale)))
 
 
@@ -264,16 +256,15 @@ def attach_avatar(asset: Path, dims: tuple[int, int]) -> dict[str, Any]:
 
 
 def next_id(conn: Connection, column: Any) -> int:
-    """Bulk executemany can't hand back autoincrement ids, so every row's pk
-    is assigned up front; starting past MAX(id) keeps `--no-reset` runs from
-    colliding with existing rows."""
+    """Bulk executemany can't hand back autoincrement ids, so every row's pk is assigned up front, starting past MAX(id) so `--no-reset` runs don't collide with existing rows."""
     return (conn.execute(select(func.max(column))).scalar() or 0) + 1
 
 
 def sync_sequence(conn: Connection, table: Table) -> None:
-    """Rows here are inserted with an explicit `id` (see `next_id`), which never
-    advances Postgres's identity sequence - left alone, the app's own inserts would
-    later collide with rows already seeded. No-op on SQLite, which has no sequence."""
+    """Rows here are inserted with an explicit `id`, which never advances Postgres's identity sequence and would otherwise collide with the app's own later inserts.
+
+    No-op on SQLite, which has no sequence.
+    """
     if conn.engine.dialect.name != "postgresql":
         return
     conn.execute(
@@ -285,10 +276,10 @@ def sync_sequence(conn: Connection, table: Table) -> None:
 
 
 def insert_rows(conn: Connection, table: Table, rows: list[dict[str, Any]]) -> None:
-    """executemany requires every dict in a batch to share one key set, so
-    group by key set first. Builders rely on this to omit a column entirely
-    (e.g. `avatar`) when it should stay SQL NULL - passing None to a JSON
-    column would store the JSON literal 'null' instead."""
+    """executemany requires every dict in a batch to share one key set, so rows are grouped by key set first.
+
+    Builders rely on this to omit a column entirely (e.g. `avatar`) when it should stay SQL NULL, since passing None to a JSON column would store the JSON literal 'null' instead.
+    """
     groups: dict[tuple[str, ...], list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         groups[tuple(row)].append(row)
@@ -320,10 +311,10 @@ def insert_chunked(
 
 @dataclass(frozen=True)
 class TextPools:
-    """Faker output generated once up front and sampled per row. Faker calls
-    dominate build time at large scales; a few thousand calls here replace
-    millions during row building. Name pools carry a pre-cleaned email token
-    so building an address needs no regex per employee."""
+    """Faker output generated once up front and sampled per row, since Faker calls dominate build time at large scales.
+
+    Name pools carry a pre-cleaned email token so building an address needs no regex per employee.
+    """
 
     first_names: list[tuple[str, str]]  # (display, email-safe token)
     last_names: list[tuple[str, str]]
@@ -342,11 +333,8 @@ def _email_token(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", ".", value.lower()).strip(".")
 
 
-# Extra English locales folded into the first/last-name pools: a single
-# locale's corpus plateaus at ~690/1000 unique values no matter how many are
-# drawn (verified empirically), so widening the pool means drawing from more
-# locales, not more calls. `sorted()` keeps `--seed` reproducible - set
-# iteration order isn't stable across runs.
+# Extra English locales folded into the first/last-name pools, since a single locale's corpus plateaus at ~690/1000 unique values no matter how many are drawn.
+# `sorted()` keeps `--seed` reproducible, since set iteration order isn't stable across runs.
 NAME_LOCALES = ["en_US", "en_GB", "en_IE", "en_CA", "en_AU"]
 
 
@@ -363,19 +351,15 @@ def _locale_name_pool(attr: str, seed: int) -> list[str]:
 def build_text_pools(fake: Faker, scale: float, seed: int) -> TextPools:
     return TextPools(
         first_names=[
-            (name, _email_token(name))
-            for name in _locale_name_pool("first_name", seed)
+            (name, _email_token(name)) for name in _locale_name_pool("first_name", seed)
         ],
         last_names=[
             (name, _email_token(name))
             for name in _locale_name_pool("last_name", seed + 1000)
         ],
-        # job draws from a fixed ~639-value corpus that more draws won't
-        # grow; combined with JOB_LEVELS at row-build time instead.
+        # job draws from a fixed ~639-value corpus that more draws won't grow, so it's combined with JOB_LEVELS at row-build time instead.
         jobs=[fake.job() for _ in range(650)],
-        phones=[
-            fake.phone_number() for _ in range(pool_size(400, scale, 50_000))
-        ],
+        phones=[fake.phone_number() for _ in range(pool_size(400, scale, 50_000))],
         titles=[
             fake.sentence(nb_words=6).rstrip(".")
             for _ in range(pool_size(500, scale, 50_000))
@@ -391,8 +375,7 @@ def build_text_pools(fake: Faker, scale: float, seed: int) -> TextPools:
             fake.sentence(nb_words=8) for _ in range(pool_size(500, scale, 50_000))
         ],
         paragraphs=[
-            fake.paragraph(nb_sentences=2)
-            for _ in range(pool_size(400, scale, 30_000))
+            fake.paragraph(nb_sentences=2) for _ in range(pool_size(400, scale, 30_000))
         ],
         catch_phrases=[
             (name, slugify(name))
@@ -455,8 +438,7 @@ def build_employee_row(
         "department_id": department_id,
         "deleted_at": rand_datetime(rng, 180) if deleted else None,
     }
-    # ~20% chance of an avatar; otherwise the key stays absent so the column
-    # is SQL NULL and the UI falls back to initials.
+    # ~20% chance of an avatar; otherwise the key stays absent so the column is SQL NULL and the UI falls back to initials.
     if rng.randint(1, 10) <= 2:
         row["avatar"] = rng.choice(avatar_infos)
     return row
@@ -537,8 +519,7 @@ def build_timesheet_row(
     task_ids: range,
     task_project_ids: list[int],
 ) -> dict[str, Any]:
-    # Most entries are logged against a task; the rest go to a project only.
-    # Reusing the task's own project keeps the two foreign keys coherent.
+    # Most entries reuse the task's own project to keep the two foreign keys coherent; the rest go to a project only.
     if task_project_ids and rng.random() < 0.6:
         offset = rng.randrange(len(task_project_ids))
         task_id, project_id = task_ids[offset], task_project_ids[offset]
@@ -613,9 +594,7 @@ def build_expense_row(
                 "date": rand_date(rng, 365),
             }
         )
-    # `total_amount` is normally recomputed by
-    # ExpenseView._recompute_total_amount; done directly here since this
-    # script bypasses that hook.
+    # `total_amount` is normally recomputed by ExpenseView._recompute_total_amount; done directly here since this script bypasses that hook.
     row: dict[str, Any] = {
         "id": expense_id,
         "employee_id": rng.choice(employee_ids),
@@ -650,8 +629,7 @@ def seed(config: SeedConfig) -> None:
     started = time.perf_counter()
 
     engine = app_engine
-    # The app engine echoes SQL outside PROD; that would print every INSERT
-    # statement, which is unusable at million-row volume.
+    # The app engine echoes SQL outside PROD, which would print every INSERT statement and is unusable at million-row volume.
     engine.echo = False
 
     if config.reset:
@@ -662,8 +640,7 @@ def seed(config: SeedConfig) -> None:
     Base.metadata.create_all(engine)
 
     pools = build_text_pools(fake, config.scale, config.seed)
-    # Each asset is copied into storage once; every seeded avatar then reuses
-    # one of these FileInfo dicts instead of writing a file per employee.
+    # Each asset is copied into storage once; every seeded avatar then reuses one of these FileInfo dicts instead of writing a file per employee.
     avatar_infos = [
         attach_avatar(path, image_size(path))
         for path in sorted(ASSETS_DIR.glob("avatar0*.png"))
@@ -671,13 +648,11 @@ def seed(config: SeedConfig) -> None:
 
     with engine.connect() as conn:
         if engine.dialect.name == "sqlite":
-            # Seed data is disposable and rebuilt from scratch on failure,
-            # so trade crash-durability for insert speed on this connection.
+            # Seed data is disposable and rebuilt from scratch on failure, so trade crash-durability for insert speed on this connection.
             conn.exec_driver_sql("PRAGMA journal_mode = MEMORY")
             conn.exec_driver_sql("PRAGMA synchronous = OFF")
 
-        # Departments: ids follow ORG_CHART order (parents first), so each
-        # child can reference its parent's id before anything is inserted.
+        # Departments: ids follow ORG_CHART order (parents first), so each child can reference its parent's id before anything is inserted.
         department_id_start = next_id(conn, Department.id)
         department_ids: dict[str, int] = {}
         department_rows: list[dict[str, Any]] = []
@@ -708,9 +683,8 @@ def seed(config: SeedConfig) -> None:
 
         employee_id_start = next_id(conn, Employee.id)
         employee_ids = range(employee_id_start, employee_id_start + counts["employees"])
-        # Soft-delete a small slice, so SoftDeleteModelView's "hidden on
-        # delete" behavior is observable on a fresh dataset. Chosen up front
-        # so the stamp happens at build time instead of a second UPDATE pass.
+        # Soft-delete a small slice so SoftDeleteModelView's hide-on-delete behavior is observable on a fresh dataset.
+        # Chosen up front so the stamp happens at build time instead of a second UPDATE pass.
         deleted_employees = set(
             rng.sample(employee_ids, k=max(1, len(employee_ids) // 50))
         )
@@ -796,9 +770,7 @@ def seed(config: SeedConfig) -> None:
             lambda _: build_leave_request_row(rng, pools, employee_ids),
         )
 
-        # Expenses and their lines are built together (the lines' sum is the
-        # expense's total_amount), so this one interleaves two inserts per
-        # chunk instead of going through insert_chunked.
+        # Expenses and their lines are built together, since the lines' sum is the expense's total_amount, so this one interleaves two inserts per chunk instead of going through insert_chunked.
         expense_id_start = next_id(conn, Expense.id)
         total_expenses = counts["expenses"]
         done = 0

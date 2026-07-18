@@ -1,9 +1,5 @@
-{# Template for OrgChartWidget (see dashboard.py).
-
-   The tree data is embedded as a JSON script tag rather than inlined into
-   the init call, so department names never need JavaScript escaping. The
-   init runs on DOMContentLoaded because the ApexTree vendor bundle is
-   injected at the end of the page body, after this inline script. #}
+{# Template for OrgChartWidget (see dashboard.py): the tree data is embedded as a JSON script tag rather than inlined into the init call, so department names never need JavaScript escaping.
+   Init runs on DOMContentLoaded since the ApexTree vendor bundle is injected at the end of the page body, after this inline script. #}
 <div class="card">
     <div class="card-header">
         <h3 class="card-title">{{ title }}</h3>
@@ -28,8 +24,7 @@
                     return span.innerHTML;
                 }
 
-                // Pick black or white text for a hex background so every
-                // node label stays readable regardless of department color.
+                // Pick black or white text for a hex background so every node label stays readable regardless of department color.
                 function inkFor(hexColor) {
                     var hex = (hexColor || '#6b7280').replace('#', '');
                     var r = parseInt(hex.substring(0, 2), 16);

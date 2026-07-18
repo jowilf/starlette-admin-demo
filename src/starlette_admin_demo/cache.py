@@ -1,12 +1,7 @@
-"""Background precomputation for the dashboard's query results (see
-stats.py, dashboard.py), cached in Redis and computed by Celery (see celery_app.py).
+"""Background precomputation for the dashboard's query results (see stats.py, dashboard.py), cached in Redis and computed by Celery (see celery_app.py).
 
-`precomputed_stat(key)` wraps a `stats.py` function to register it under `key` for
-`refresh_all`, and returns a read-only widget callback that only reads Redis - it never
-opens a session, so a dashboard page load never blocks on a query. The Redis connection
-is managed here rather than via FastAPI's lifespan/DI because starlette-admin mounts the
-admin as a *separate* Starlette app (`admin.mount_to(app)`), so `request.app` inside an
-admin view isn't the outer app a lifespan was registered on.
+`precomputed_stat(key)` wraps a `stats.py` function to register it for `refresh_all` and returns a
+read-only widget callback that only reads Redis, so a dashboard page load never blocks on a query.
 """
 
 from collections.abc import Awaitable, Callable
@@ -37,8 +32,7 @@ DASHBOARD_CACHE_GROUP = "dashboard"
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 # How often Celery Beat schedules `refresh_dashboard_stats`, in seconds.
 REFRESH_INTERVAL = int(os.getenv("DASHBOARD_REFRESH_INTERVAL", "60"))
-# Backstop only: normally each `set()` renews this before it expires. If Beat/worker
-# stop, a stale entry falls back to serving each callback's `default` after this many seconds.
+# Backstop only: if Beat/worker stop, a stale entry falls back to serving each callback's `default` after this many seconds.
 DASHBOARD_CACHE_TTL = int(os.getenv("DASHBOARD_CACHE_TTL", "300"))
 
 _redis = redis_asyncio.Redis.from_url(REDIS_URL)
@@ -65,10 +59,10 @@ def precomputed_stat(
 ) -> Callable[
     [Callable[[Session], Awaitable[Any]]], Callable[[Request], Awaitable[Any]]
 ]:
-    """Register a `stats.py` function under `key` for `refresh_all`, and
-    return the widget callback `dashboard.py` calls instead. The callback is
-    read-only: it never opens a session and never falls back to computing
-    inline, so a cache miss just serves `default`."""
+    """Register a `stats.py` function under `key` for `refresh_all`, and return the read-only widget callback `dashboard.py` calls instead.
+
+    A cache miss just serves `default`; the callback never falls back to computing inline.
+    """
 
     def decorator(
         fn: Callable[[Session], Awaitable[Any]],
@@ -98,16 +92,15 @@ async def refresh_all() -> None:
 
 
 async def close_redis() -> None:
-    """Disconnect the shared client's pooled connections. Must be called at the end of
-    every `asyncio.run(refresh_all())` (see celery_app.py) - a connection opened under
-    one event loop can't be reused once that loop closes."""
+    """Disconnect the shared client's pooled connections; must be called at the end of every `asyncio.run(refresh_all())` (see celery_app.py)."""
     await _redis.aclose()
 
 
 def trigger_dashboard_refresh() -> None:
-    """Enqueue `refresh_dashboard_stats` (see celery_app.py) for a worker to pick up now,
-    instead of waiting out Beat's schedule. Imports `celery_app` lazily so this module
-    (imported by app.py on every request) doesn't pay to build the `Celery` app unless needed."""
+    """Enqueue `refresh_dashboard_stats` (see celery_app.py) for a worker to pick up now, instead of waiting out Beat's schedule.
+
+    Imports `celery_app` lazily so this module doesn't pay to build the `Celery` app unless needed.
+    """
     from .celery_app import refresh_dashboard_stats
 
     refresh_dashboard_stats.delay()
@@ -115,8 +108,7 @@ def trigger_dashboard_refresh() -> None:
 
 @asynccontextmanager
 async def dashboard_cache_lifespan():
-    """Closes the Redis connection on app shutdown. Enter from app.py's lifespan, around
-    `yield`; the cache itself is kept warm by Celery Beat and a worker, not this process."""
+    """Closes the Redis connection on app shutdown; the cache itself is kept warm by Celery Beat and a worker, not this process."""
     try:
         yield
     finally:

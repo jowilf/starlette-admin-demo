@@ -15,8 +15,7 @@ _engine_kwargs = {
     "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "1800")),
 }
 if not DATABASE_URL.startswith("sqlite"):
-    # 8 fastapi workers (see Dockerfile) each get their own pool, so keep
-    # per-worker limits modest to stay under Postgres's max_connections.
+    # Each of the 8 FastAPI workers (see Dockerfile) gets its own pool, so limits stay modest to stay under Postgres's max_connections.
     _engine_kwargs["pool_size"] = int(os.getenv("DB_POOL_SIZE", "5"))
     _engine_kwargs["max_overflow"] = int(os.getenv("DB_MAX_OVERFLOW", "10"))
     _engine_kwargs["pool_timeout"] = int(os.getenv("DB_POOL_TIMEOUT", "30"))

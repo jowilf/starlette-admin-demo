@@ -1,11 +1,6 @@
-"""Dashboard index view. `HRDashboardView` replaces the admin's default index with
-stock widgets plus one custom widget, `OrgChartWidget`, which renders the department
-hierarchy with ApexTree - a reference for writing your own: subclass `BaseWidget`,
-point `template` at a file under `templates_dir`, return context from `get_context`,
-and declare vendor scripts in `additional_js_links`.
+"""Dashboard index view: `HRDashboardView` replaces the admin's default index with stock widgets plus the custom `OrgChartWidget`.
 
-Every number here is a plain Redis read via a `stats.py` callback (see cache.py), never
-a live query, so a page load never blocks on the database.
+Every number here is a plain Redis read via a `stats.py` callback (see cache.py), never a live query.
 """
 
 from calendar import monthrange
@@ -46,11 +41,10 @@ from .models import (
 )
 from .stats import _fmt_money, _last_months, _title
 
-# Pinned to 1.3.0: last release without a license gate (no watermark). The
-# API used here is stable across 1.x, so upgrading needs a license key only.
+# Pinned to 1.3.0, the last release without a license gate (watermark).
 APEXTREE_JS = "https://cdn.jsdelivr.net/npm/apextree@1.3.0/apextree.min.js"
 
-# Colorblind-safe categorical palette; order is fixed (assigned to series in this order).
+# Colorblind-safe categorical palette; order is fixed and assigned to series in this order.
 CATEGORICAL = [
     "#2a78d6",
     "#1baf7a",
@@ -116,9 +110,7 @@ EXPENSE_STATUS_COLORS = {
 
 @dataclass
 class OrgChartWidget(BaseWidget):
-    """Renders a hierarchy as an interactive ApexTree organization chart. Data source
-    agnostic: `tree_callback` returns the nested node structure ApexTree consumes, each
-    node needing `id`, `children`, and a `data` payload (`name`, `people`, `budget`, `color`)."""
+    """Renders a hierarchy as an interactive ApexTree organization chart, data source agnostic via `tree_callback`."""
 
     template: ClassVar[str] = "widgets/org_chart_widget.html"
 
@@ -152,9 +144,7 @@ class OrgChartWidget(BaseWidget):
 class HRDashboardView(CustomView):
     """Admin index page: KPI cards, the org chart, and tabbed analytics.
 
-    The widget tree is rebuilt on every request (`widget` is a callable),
-    so headline descriptions can be computed from the same cached values
-    that feed the charts.
+    The widget tree is rebuilt on every request so headline descriptions can be computed from the same cached values that feed the charts.
     """
 
     def __init__(self) -> None:
@@ -332,8 +322,7 @@ class HRDashboardView(CustomView):
                         ),
                     ]
                 ),
-                # Stays outside the tabs: a hidden tab pane measures 0, and
-                # ApexTree measures its container at render time.
+                # Stays outside the tabs since a hidden tab pane measures 0 and ApexTree measures its container at render time.
                 OrgChartWidget(
                     title="Organization Chart",
                     tree_callback=stats.org_tree,

@@ -1,7 +1,6 @@
-"""Seed the 07-hr example through the running admin's own HTTP endpoints, unlike
-`seed.py` which writes straight to the database. Drives the real create/edit forms
-over HTTP, including login and CSRF (`CSRFMiddleware`: `GET` sets the cookie, `POST`
-echoes it back via `X-CSRFToken`), as a browser would.
+"""Seed the 07-hr example through the running admin's own HTTP endpoints, unlike `seed.py` which writes straight to the database.
+
+Drives the real create/edit forms over HTTP, including login and CSRF, as a browser would.
 
 Usage:
     uv run seed_api.py                       # against http://127.0.0.1:8000
@@ -9,8 +8,7 @@ Usage:
     uv run seed_api.py --concurrency 16       # more requests in flight
     uv run seed_api.py --no-reset             # append instead of wiping first
 
-The target app must already be running. Schema reset (`--reset`, default) still goes
-straight through SQLAlchemy, same as seed.py - there's no admin endpoint for wiping the database.
+The target app must already be running; schema reset still goes straight through SQLAlchemy since there's no admin endpoint for wiping the database.
 """
 
 import argparse
@@ -63,9 +61,7 @@ DEFAULT_CONCURRENCY = 8
 
 
 class AdminApiClient:
-    """Talks to the running admin the same way a logged-in browser would. Login and
-    departments run one request at a time; everything else fans out across a thread
-    pool via `create_many`/`edit_many`."""
+    """Talks to the running admin the same way a logged-in browser would; everything but login and departments fans out across a thread pool via `create_many`/`edit_many`."""
 
     def __init__(
         self,
@@ -102,9 +98,10 @@ class AdminApiClient:
     def create(
         self, key: str, data: dict[str, Any], files: dict[str, Any] | None = None
     ) -> str:
-        """POST a new row to `/{key}/create`, and return its new pk. Submitting
-        `_continue_editing` makes the framework redirect to `/{key}/edit?pk=<new pk>`
-        instead of the list page, so the pk can be read off the `Location` header."""
+        """POST a new row to `/{key}/create`, and return its new pk.
+
+        Submitting `_continue_editing` makes the framework redirect to `/{key}/edit?pk=<new pk>` so the pk can be read off the `Location` header.
+        """
         self.http.get(f"/{key}/create")
         response = self.http.post(
             f"/{key}/create",
@@ -125,8 +122,7 @@ class AdminApiClient:
         payloads: list[tuple[dict[str, Any], dict[str, Any] | None]],
         label: str | None = None,
     ) -> list[str]:
-        """`create` a batch of independent rows concurrently, returning
-        their pks in `payloads` order."""
+        """`create` a batch of independent rows concurrently, returning their pks in `payloads` order."""
         total = len(payloads)
         completed = 0
         lock = threading.Lock()
@@ -149,9 +145,7 @@ class AdminApiClient:
         return results
 
     def edit(self, key: str, pk: str, data: dict[str, Any]) -> None:
-        """POST the full field set for an existing row to `/{key}/edit?pk=`.
-        Replaces every field the view exposes, so callers must resend the
-        complete payload, not just the changed field."""
+        """POST the full field set for an existing row to `/{key}/edit?pk=`, so callers must resend the complete payload, not just the changed field."""
         self.http.get(f"/{key}/edit", params={"pk": pk})
         response = self.http.post(
             f"/{key}/edit",
@@ -201,9 +195,7 @@ def _to_form_value(value: Any) -> Any:
 
 
 def clean(data: dict[str, Any]) -> dict[str, Any]:
-    """Convert a raw payload dict to the strings starlette_admin's form
-    fields expect, dropping None values so optional relations/dates parse
-    to None instead of empty strings."""
+    """Convert a raw payload dict to the strings starlette_admin's form fields expect, dropping None values so optional relations/dates parse to None instead of empty strings."""
     cleaned = {k: _to_form_value(v) for k, v in data.items()}
     return {k: v for k, v in cleaned.items() if v is not None}
 
@@ -244,8 +236,7 @@ def build_employee_data(
     skills = rng.sample(SKILLS, k=rng.randint(0, 6))
 
     hire_date = fake.date_between(start_date="-12y")
-    # EmployeeView.validate() requires date_of_birth >=16y before hire_date;
-    # using days avoids a Feb 29 replace-the-year edge case.
+    # EmployeeView.validate() requires date_of_birth >=16y before hire_date; using days avoids a Feb 29 replace-the-year edge case.
     years_before_hire = rng.randint(16, 60)
     date_of_birth = hire_date - timedelta(
         days=round(years_before_hire * 365.25) + rng.randint(0, 364)
@@ -399,9 +390,7 @@ def build_expense_data(
     employee_pks: list[str],
     project_pks: list[str],
 ) -> dict[str, Any]:
-    # No standalone `/expense-line/create` endpoint, so lines are left out
-    # here; `total_amount` recomputes to 0 via after_create_committed
-    # (unlike seed.py, which writes lines directly).
+    # No standalone `/expense-line/create` endpoint, so lines are left out and `total_amount` recomputes to 0 via after_create_committed.
     status = pick(rng, EXPENSE_STATUSES)
     data: dict[str, Any] = {
         "employee": rng.choice(employee_pks),
@@ -440,8 +429,7 @@ def seed_via_api(client: AdminApiClient, config: SeedConfig) -> None:
             stale.unlink()
     Base.metadata.create_all(app_engine)
 
-    # Departments: sequential, parent before child - a child's `parent=`
-    # needs the parent's pk from its already-returned create request.
+    # Departments: sequential, parent before child, since a child's `parent=` needs the parent's pk from its already-returned create request.
     children_of: dict[str | None, list[str]] = defaultdict(list)
     for name, parent_name, _color in ORG_CHART:
         children_of[parent_name].append(name)
@@ -459,8 +447,7 @@ def seed_via_api(client: AdminApiClient, config: SeedConfig) -> None:
     leaf_names = [n for n in department_pks if not children_of[n]]
     parent_names = [n for n in department_pks if children_of[n]]
 
-    # Employees: payloads built one at a time (rng/Faker aren't thread-safe;
-    # a run must stay reproducible for a given --seed), then created concurrently.
+    # Employees: payloads built one at a time since rng/Faker aren't thread-safe, then created concurrently.
     employee_payloads: list[tuple[dict[str, Any], dict[str, Any] | None]] = []
     department_choices: list[str] = []
     for i in range(counts["employees"]):
@@ -478,8 +465,7 @@ def seed_via_api(client: AdminApiClient, config: SeedConfig) -> None:
     employee_pks = client.create_many("employee", employee_payloads, label="employees")
     dept_headcount = Counter(department_choices)
 
-    # Real headcount now that every employee has a department. Full-form
-    # edit since `/{key}/edit` replaces every field the view exposes.
+    # Real headcount now that every employee has a department; full-form edit since `/{key}/edit` replaces every field the view exposes.
     for name, payload in department_payloads.items():
         payload["headcount"] = dept_headcount.get(name, 0)
     client.edit_many(
@@ -498,8 +484,7 @@ def seed_via_api(client: AdminApiClient, config: SeedConfig) -> None:
     ]
     project_pks = client.create_many("project", project_payloads, label="projects")
 
-    # Project picked up front so (task_pk, project_pk) pairs can be
-    # reassembled once the concurrent batch returns, in payload order.
+    # Project picked up front so (task_pk, project_pk) pairs can be reassembled once the concurrent batch returns, in payload order.
     task_project_choices = [rng.choice(project_pks) for _ in range(counts["tasks"])]
     task_payloads = [
         (clean(build_task_data(rng, fake, project_pk, employee_pks)), None)
@@ -534,8 +519,7 @@ def seed_via_api(client: AdminApiClient, config: SeedConfig) -> None:
     ]
     client.create_many("expense", expense_payloads, label="expenses")
 
-    # Runs last: a deleted row is hidden from find_by_pk, so deleting
-    # earlier would break creates that still needed to reference it.
+    # Runs last: a deleted row is hidden from find_by_pk, so deleting earlier would break creates that still needed to reference it.
     deleted_employees = rng.sample(employee_pks, k=max(1, len(employee_pks) // 50))
     deleted_projects = rng.sample(project_pks, k=max(1, len(project_pks) // 25))
     with ThreadPoolExecutor(max_workers=2) as pool:

@@ -1,19 +1,8 @@
-"""Everything behind the admin's search bars: sqlalchemy-searchable on top of Postgres
-full-text search.
+"""Full-text search support built on sqlalchemy-searchable and Postgres.
 
-Every model in models.py declares its own `search_vector` TSVectorType column, weighted
-(A > B > C > D) so `ts_rank`/`ts_rank_cd` ordering stays meaningful; `make_searchable`
-(models.py, right after `Base`) is what turns those columns into a BEFORE INSERT OR
-UPDATE trigger and a GIN index, created automatically once schema DDL runs - no hand-
-rolled DDL needed. Search only ever matches a row's own columns - never a related
-row's (e.g. an Employee's department name isn't searchable through the Employee view).
-
-A few of those columns still need a `@vectorizer` below: a plain `TSVectorType` can only
-concatenate columns independently, one `to_tsvector` call each, so two same-row columns
-sharing a weight (e.g. an enum's `status` and `priority`) would rank phrase-adjacency
-oddly if left separate. Each vectorizer instead returns the raw combined SQL for its
-weight group, evaluated inside the row's own trigger; the sibling column it folds in is
-dropped from the model's `TSVectorType(...)` column list so it isn't double-counted.
+Each model's weighted `search_vector` column is kept up to date by a database trigger from
+`make_searchable`, and the `@vectorizer` functions below combine sibling columns that share
+a weight so ranking accounts for phrase adjacency.
 """
 
 from typing import Any
@@ -59,10 +48,7 @@ def _expense_status_category_description(column: Any) -> Any:
     )
 
 
-# Forces mapper configuration (and thus make_searchable's DDL-listener setup, which
-# only runs on the "after_configured" event) right now, rather than leaving it to
-# whenever the app happens to issue its first ORM query - schema creation must not
-# race ahead of it.
+# Configures mappers now so make_searchable's DDL listeners are registered before schema creation runs.
 configure_mappers()
 
 
@@ -72,8 +58,6 @@ def fts_match(model: Any, term: str) -> Any:
     if not term:
         return false()
     vector = inspect_search_vectors(model)[0]
-    # regconfig must be an unknown-typed literal, not a bound parameter - passed as
-    # one, Postgres won't implicitly cast it to the `regconfig` type parse_websearch
-    # expects.
+    # Postgres won't implicitly cast a bound parameter to `regconfig`, so it must be inlined as a literal.
     regconfig = literal_column(f"'{search_manager.options.regconfig}'")
     return vector.bool_op("@@")(func.parse_websearch(regconfig, term))

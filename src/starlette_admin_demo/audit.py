@@ -1,9 +1,6 @@
-"""Read-only audit trail. `AuditSubscriber` writes one `AuditLog` row per
-create/edit/delete/export/import event, admin-wide (subscribed in app.py).
+"""Read-only audit trail: `AuditSubscriber` writes one `AuditLog` row per create/edit/delete/export/import event, admin-wide.
 
-Listens on the `*_COMMITTED` events rather than `AFTER_CREATE`/`AFTER_EDIT`/`AFTER_DELETE`,
-since those can still be rolled back before `request.state.session` commits. Row/bulk
-actions that bypass create()/edit()/delete() (see views.py) call `log_action()` directly instead.
+It listens on `*_COMMITTED` events rather than `AFTER_CREATE`/`AFTER_EDIT`/`AFTER_DELETE` since those can still roll back before the session commits.
 """
 
 from datetime import datetime
@@ -29,8 +26,7 @@ from starlette_admin.events import (
 from .config import engine
 from .models import Base
 
-# Not `__admin_repr__`: some models build their repr via a relationship,
-# which risks DetachedInstanceError in *_COMMITTED hooks.
+# Not `__admin_repr__`, since some models build their repr via a relationship, risking DetachedInstanceError in *_COMMITTED hooks.
 _LABEL_ATTRS = ("name", "title", "expense_number", "slug", "email")
 
 
@@ -50,7 +46,7 @@ class AuditLog(Base):
 
 
 class AuditLogView(ModelView):
-    """Rows come only from `AuditSubscriber`/`log_action()`; not editable by any role.
+    """Rows come only from `AuditSubscriber`/`log_action()` and aren't editable by any role.
     Doesn't subclass `views.ModelView` (would be circular), so shared cosmetic settings are repeated below."""
 
     row_actions_display_type = RowActionsDisplayType.KEBAB
@@ -117,8 +113,10 @@ async def _write_audit(
 
 
 def log_action(request: Request, resource: str, pk: Any, detail: str) -> None:
-    """Log a row/bulk action that bypasses create()/edit()/delete(). Call after staging
-    the mutation on `request.state.session`, so the audit row commits with the action's own transaction."""
+    """Log a row/bulk action that bypasses create()/edit()/delete().
+
+    Call after staging the mutation so the audit row commits with the action's own transaction.
+    """
     session: Session = request.state.session
     session.add(
         AuditLog(

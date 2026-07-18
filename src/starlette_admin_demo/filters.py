@@ -1,8 +1,4 @@
-"""Custom filters. `RelationField`s only get null-checks by default, so
-these add substring/equality matches against `Department.name` and an
-"is one of"/"is not one of" pair backed by a department dropdown, for the
-Employee list's `department` field.
-"""
+"""Custom filters for the Employee list's `department` field, since `RelationField`s only get null-checks by default."""
 
 from typing import Any
 
@@ -33,10 +29,7 @@ class DepartmentContainsFilter(BaseFilter):
 
 
 class _DepartmentChoicesMixin:
-    """Shared `get_choices`/`parse_value` for the two filters below: the
-    dropdown lists departments by name but posts back `id`, so `apply`
-    matches on the primary key.
-    """
+    """Shared `get_choices`/`parse_value` for the two filters below: the dropdown lists departments by name but posts back `id`, so `apply` matches on the primary key."""
 
     def get_choices(self, request: Request) -> list[tuple[int, str]]:
         session: Session = request.state.session

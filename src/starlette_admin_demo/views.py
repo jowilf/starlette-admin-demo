@@ -1,7 +1,6 @@
-"""Admin views. `SoftDeleteModelView` gives any model mixing in `SoftDeleteMixin` (see
-models.py) "delete hides the row" behavior for free; Employee and Project subclass it,
-neither exposing a restore UI. `searchable_fields` on a view only drives its filter
-builder - the search bar itself always matches the model's `search_vector` (see search.py).
+"""Admin views. `SoftDeleteModelView` gives any model mixing in `SoftDeleteMixin` (see models.py) "delete hides the row" behavior for free.
+
+`searchable_fields` on a view only drives its filter builder; the search bar itself always matches the model's `search_vector` (see search.py).
 """
 
 from collections import Counter
@@ -94,10 +93,8 @@ class ModelView(BaseModelView):
     search_auto_submit = True
 
     def get_search_query(self, request: Request, term: str) -> Any:
-        # Replaces the library's per-column ILIKE scan with the model's GIN
-        # indexed `search_vector` (models.py / search.py). The vector already
-        # folds in related rows' names (e.g. an employee's department), so
-        # this single clause is the whole search - no per-view extras.
+        # Replaces the library's per-column ILIKE scan with the model's GIN-indexed `search_vector` (models.py / search.py).
+        # The vector already folds in related rows' names, so this single clause is the whole search.
         return fts_match(self.model, term)
 
     @staticmethod
@@ -168,8 +165,10 @@ class SoftDeleteModelView(ModelView):
             on_commit(request, _make_after_delete_committed(obj, pk))
         return len(objs)
 
+
 class InlineModelView(BaseInlineModelView):
     extra = 0
+
 
 # ── Department ───────────────────────────────────────────────────────────────
 
@@ -312,9 +311,9 @@ class DepartmentView(ModelView):
 
 
 class EmployeeView(SoftDeleteModelView):
-    """Detail page is `templates/employee/detail.html`, a hand-built profile
-    body in place of the stock attribute/value table. It receives this view
-    as `view` and calls `initials`/`tenure` directly for date/string logic.
+    """Detail page is `templates/employee/detail.html`, a hand-built profile body in place of the stock attribute/value table.
+
+    It receives this view as `view` and calls `initials`/`tenure` directly for date/string logic.
     """
 
     detail_template = "employee/detail.html"
@@ -434,8 +433,7 @@ class EmployeeView(SoftDeleteModelView):
     ]
 
     async def validate(self, request: Request, data: dict[str, Any]) -> None:
-        # Cross-field only: salary and email are checked by their own field
-        # validators (see the `salary`/`email` fields above).
+        # Cross-field only: salary and email are checked by their own field validators (see the `salary`/`email` fields above).
         errors: dict[str, str] = {}
         date_of_birth = data.get("date_of_birth")
         hire_date = data.get("hire_date")
@@ -453,8 +451,7 @@ class EmployeeView(SoftDeleteModelView):
 
     @staticmethod
     def initials(name: str) -> str:
-        """Fallback for the profile header avatar when no image is uploaded,
-        matching the list page chip rendered by `AvatarNameField`."""
+        """Fallback for the profile header avatar when no image is uploaded, matching the list page chip rendered by `AvatarNameField`."""
         return name_initials(name)
 
     @staticmethod
@@ -500,8 +497,7 @@ class LeaveRequestView(ModelView):
     ]
     exclude_fields_from_list = ["id", "reason", "reviewer_notes"]
     fields_default_sort = [("start_date", True)]
-    # search_vector also covers list-excluded reason/reviewer_notes and folds
-    # in the employee's and approver's names.
+    # search_vector also covers list-excluded reason/reviewer_notes and folds in the employee's and approver's names.
     searchable_fields = [
         "type",
         "status",
@@ -554,8 +550,7 @@ class LeaveRequestView(ModelView):
     actions = ["approve", "reject"]
 
     async def validate(self, request: Request, data: dict[str, Any]) -> None:
-        # Cross-field only: days_requested has its own field validator (see
-        # the `days_requested` field above).
+        # Cross-field only: days_requested has its own field validator (see the `days_requested` field above).
         errors: dict[str, str] = {}
         start_date = data.get("start_date")
         end_date = data.get("end_date")
@@ -685,10 +680,9 @@ class TaskInline(InlineModelView):
 
 
 class ProjectView(SoftDeleteModelView):
-    """Detail page is `templates/project/detail.html`, a mini dashboard with
-    three stat cards (budget burn, task breakdown, timeline) in place of the
-    stock attribute table. Template gets this view as `view` and the model as
-    `raw_obj`, rendering e.g. `view.budget_burn(raw_obj)` per the methods below.
+    """Detail page is `templates/project/detail.html`, a mini dashboard with three stat cards (budget burn, task breakdown, timeline) in place of the stock attribute table.
+
+    The template gets this view as `view` and the model as `raw_obj`, rendering e.g. `view.budget_burn(raw_obj)` per the methods below.
     """
 
     detail_template = "project/detail.html"
@@ -783,8 +777,7 @@ class ProjectView(SoftDeleteModelView):
     ]
 
     async def validate(self, request: Request, data: dict[str, Any]) -> None:
-        # Cross-field only: budget and spent each have their own field
-        # validator (see the `budget`/`spent` fields above).
+        # Cross-field only: budget and spent each have their own field validator (see the `budget`/`spent` fields above).
         errors: dict[str, str] = {}
         start_date = data.get("start_date")
         end_date = data.get("end_date")
@@ -794,14 +787,12 @@ class ProjectView(SoftDeleteModelView):
             raise FormValidationError(errors)
         await super().validate(request, data)
 
-    # Reused for its color/icon mappings, so the breakdown card matches the
-    # task list and inline table's badges.
+    # Reused for its color/icon mappings, so the breakdown card matches the task list and inline table's badges.
     _task_status_badges = TaskStatusBadgeField("status", enum=TaskStatus)
 
     @staticmethod
     def budget_burn(obj: Any) -> dict[str, Any]:
-        """Share of `budget` consumed by `spent`, as progress bar context.
-        Bar turns orange at 80%, red past 100%."""
+        """Share of `budget` consumed by `spent`, as progress bar context; turns orange at 80%, red past 100%."""
         if not obj.budget:
             return {"width": 0, "bar_class": "bg-secondary", "label": "No budget set"}
         percent = round(float(obj.spent) / float(obj.budget) * 100)
@@ -819,9 +810,10 @@ class ProjectView(SoftDeleteModelView):
         }
 
     def task_stats(self, obj: Any) -> list[dict[str, Any]]:
-        """Task counts by status, shaped for `fields/badge.html`. Omits empty
-        statuses; iterates `TaskStatus` so order follows the workflow, not
-        insertion order."""
+        """Task counts by status, shaped for `fields/badge.html`.
+
+        Omits empty statuses; iterates `TaskStatus` so order follows the workflow, not insertion order.
+        """
         counts = Counter(task.status for task in obj.tasks)
         return [
             {
@@ -838,8 +830,7 @@ class ProjectView(SoftDeleteModelView):
 
     @staticmethod
     def timeline(obj: Any) -> dict[str, Any]:
-        """Headline (days left/overdue/status) plus progress bar context for
-        where `obj` sits between `start_date` and `end_date`."""
+        """Headline (days left/overdue/status) plus progress bar context for where `obj` sits between `start_date` and `end_date`."""
         today = date.today()
         if obj.status == ProjectStatus.COMPLETED:
             return {"headline": "Completed", "width": 100, "bar_class": "bg-success"}
@@ -888,8 +879,7 @@ class TaskView(ModelView):
         "labels",
     ]
     exclude_fields_from_list = ["id", "description", "labels"]
-    # search_vector also covers list-excluded description and folds in the
-    # project's and assignee's names.
+    # search_vector also covers list-excluded description and folds in the project's and assignee's names.
     searchable_fields = [
         "title",
         "status",
@@ -963,8 +953,7 @@ class TimesheetView(ModelView):
     ]
     exclude_fields_from_list = ["id", "description"]
     fields_default_sort = [("date", True)]
-    # search_vector also covers list-excluded description and folds in the
-    # employee, task and project names.
+    # search_vector also covers list-excluded description and folds in the employee, task and project names.
     searchable_fields = [
         "date",
         "hours",
@@ -1024,8 +1013,7 @@ class ExpenseView(ModelView):
     exclude_fields_from_create = ["total_amount"]
     inlines = [ExpenseLineInline]
     fields_default_sort = [("submitted_at", True)]
-    # search_vector also covers list-excluded description/notes and folds in
-    # the employee, project and approver names.
+    # search_vector also covers list-excluded description/notes and folds in the employee, project and approver names.
     searchable_fields = [
         "expense_number",
         "status",
@@ -1098,9 +1086,10 @@ class ExpenseView(ModelView):
 
     @staticmethod
     async def _recompute_total_amount(request: Request, expense_id: int) -> None:
-        """Set `total_amount` to the sum of this expense's line items. Runs after
-        commit, once inline `ExpenseLine` rows are guaranteed saved, so it opens its
-        own session rather than `request.state.session`, already closed by this point."""
+        """Set `total_amount` to the sum of this expense's line items.
+
+        Runs after commit, once inline `ExpenseLine` rows are guaranteed saved, so it opens its own session rather than `request.state.session`, already closed by this point.
+        """
         engine = request.state.session.get_bind()
 
         def _update() -> None:

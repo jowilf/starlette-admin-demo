@@ -1,8 +1,6 @@
-"""App-specific field validators, layered on top of the built-ins in
-`starlette_admin.validators` (`number_range`, `email`, etc.). A validator is a
-callable `(request, field, value)` raising `ValueError` to reject a value, attached to
-a field via `validators=[...]`; reserve a view's `validate()` override for genuinely
-cross-field rules (e.g. `end_date >= start_date`).
+"""App-specific field validators, layered on top of the built-ins in `starlette_admin.validators` (`number_range`, `email`, etc.).
+
+Reserve a view's `validate()` override for genuinely cross-field rules (e.g. `end_date >= start_date`).
 """
 
 from typing import Any
@@ -15,9 +13,7 @@ from starlette_admin.i18n import lazy_gettext as _
 
 
 def unique(model: type, column: Any, message: str | None = None):
-    """Requires no other row of `model` to have `column == value`. Reads the object
-    being edited from `request.query_params["pk"]` and excludes it from the check, so
-    resubmitting a row's own value isn't rejected as a collision with itself.
+    """Requires no other row of `model` to have `column == value`, excluding the object being edited so resubmitting its own value isn't rejected as a collision with itself.
 
     Example: `EmailField("email", validators=[unique(Employee, Employee.email)])`.
     """

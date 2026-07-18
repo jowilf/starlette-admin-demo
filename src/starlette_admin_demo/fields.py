@@ -1,8 +1,4 @@
-"""Custom fields for the admin: `DollarField` (dollar-formatted display),
-`AvatarNameField` (name + avatar on the list page), `BadgeField` and its
-per-enum subclasses (colored badge + icon), and `ProgressField` (computed
-completion percentage). See each class's docstring for specifics.
-"""
+"""Custom fields for the admin: `DollarField`, `AvatarNameField`, `BadgeField` and its per-enum subclasses, and `ProgressField`; see each class's docstring for specifics."""
 
 from dataclasses import dataclass
 from dataclasses import field as dc_field
@@ -28,8 +24,7 @@ class DollarField(DecimalField):
 
 
 def name_initials(name: str) -> str:
-    """Initials for an avatar circle when no image is uploaded. Shared by
-    `AvatarNameField` and the employee profile header so both match."""
+    """Initials for an avatar circle when no image is uploaded; shared by `AvatarNameField` and the employee profile header so both match."""
     parts = name.split()
     if not parts:
         return ""
@@ -73,9 +68,7 @@ class AvatarNameField(StringField):
 class BadgeField(EnumField):
     """Base class rendering an enum value as a colored badge with an icon.
 
-    Looks up color/icon in `badge_class_by_value`/`icon_by_value` by the
-    enum's raw value, falling back to a plain badge if unmapped. Subclasses
-    fill in those two mappings for one specific enum.
+    Looks up color/icon in `badge_class_by_value`/`icon_by_value` by the enum's raw value, falling back to a plain badge if unmapped; subclasses fill in those two mappings for one specific enum.
     """
 
     list_template: str = "fields/badge.html"
@@ -171,8 +164,7 @@ class LeaveStatusBadgeField(BadgeField):
 
 @dataclass
 class ProjectStatusBadgeField(BadgeField):
-    """Renders `Project.status` as a colored badge, matching the colors
-    Filament's `ProjectStatus` enum assigns to each case."""
+    """Renders `Project.status` as a colored badge, matching the colors Filament's `ProjectStatus` enum assigns to each case."""
 
     badge_class_by_value: dict[str, str] = dc_field(
         default_factory=lambda: {
@@ -196,9 +188,7 @@ class ProjectStatusBadgeField(BadgeField):
 
 @dataclass
 class TaskPriorityBadgeField(BadgeField):
-    """Renders a `TaskPriority` value as a colored badge, matching the
-    colors Filament's `TaskPriority` enum assigns to each case. Used for
-    both `Project.priority` and `Task.priority`, which share this enum."""
+    """Renders a `TaskPriority` value as a colored badge, matching Filament's colors; used for both `Project.priority` and `Task.priority`, which share this enum."""
 
     badge_class_by_value: dict[str, str] = dc_field(
         default_factory=lambda: {
@@ -220,8 +210,7 @@ class TaskPriorityBadgeField(BadgeField):
 
 @dataclass
 class TaskStatusBadgeField(BadgeField):
-    """Renders `Task.status` as a colored badge, matching the colors
-    Filament's `TaskStatus` enum assigns to each case."""
+    """Renders `Task.status` as a colored badge, matching the colors Filament's `TaskStatus` enum assigns to each case."""
 
     badge_class_by_value: dict[str, str] = dc_field(
         default_factory=lambda: {
@@ -247,8 +236,7 @@ class TaskStatusBadgeField(BadgeField):
 
 @dataclass
 class ExpenseStatusBadgeField(BadgeField):
-    """Renders `Expense.status` as a colored badge, matching the colors
-    Filament's `ExpenseStatus` enum assigns to each case."""
+    """Renders `Expense.status` as a colored badge, matching the colors Filament's `ExpenseStatus` enum assigns to each case."""
 
     badge_class_by_value: dict[str, str] = dc_field(
         default_factory=lambda: {
@@ -272,8 +260,7 @@ class ExpenseStatusBadgeField(BadgeField):
 
 @dataclass
 class ExpenseCategoryBadgeField(BadgeField):
-    """Renders `Expense.category` as a colored badge, matching the colors
-    Filament's `ExpenseCategory` enum assigns to each case."""
+    """Renders `Expense.category` as a colored badge, matching the colors Filament's `ExpenseCategory` enum assigns to each case."""
 
     badge_class_by_value: dict[str, str] = dc_field(
         default_factory=lambda: {
@@ -299,8 +286,7 @@ class ExpenseCategoryBadgeField(BadgeField):
 
 @dataclass
 class ProgressField(ComputedField):
-    """Progress bar for `actual_hours` vs `estimated_hours`, colored by
-    whether the work is on track, done, or over estimate."""
+    """Progress bar for `actual_hours` vs `estimated_hours`, colored by whether the work is on track, done, or over estimate."""
 
     list_template: str = "fields/progress.html"
     detail_template: str = "fields/progress.html"
