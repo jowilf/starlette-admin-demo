@@ -1,14 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="260" height="68" fill="none">
-    <defs>
-        <mask id="a">
-            <path fill="#fff" d="M0 0h68v68H0z" />
-            <circle cx="34" cy="24" r="8" fill="#000" />
-            <path stroke="#000" stroke-linecap="round" stroke-width="7"
-                d="M18 53c0-10 6.5-16 16-16s16 6 16 16" />
-        </mask>
-    </defs>
-    <rect width="68" height="68" fill="var(--tblr-primary, #4299e1)" mask="url(#a)" rx="18" />
-    <path stroke="var(--tblr-primary, #4299e1)" stroke-linecap="round" stroke-linejoin="round"
-        stroke-width="7"
-        d="M91 18v32m0-16c0-7 5-10 10-10 7 0 11 5 11 12v14M132 50V26m0 9c4-7 10-10 16-9" />
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 170 68">
+  <defs>
+    <mask id="a">
+      <path fill="#fff" d="M0 0h68v68H0z"/>
+      <circle cx="34" cy="24" r="8" fill="#000"/>
+      <path stroke="#000" stroke-linecap="round" stroke-width="7" d="M18 53c0-10 6.5-16 16-16s16 6 16 16"/>
+    </mask>
+  </defs>
+  <rect width="68" height="68" fill="var(--tblr-primary, #4299e1)" mask="url(#a)" rx="18"/>
+  <path stroke="var(--tblr-primary, #4299e1)" stroke-linecap="round" stroke-linejoin="round" stroke-width="7" d="M91 18v32m0-16c0-7 5-10 10-10 7 0 11 5 11 12v14M132 50V26m0 9c4-7 10-10 16-9"/>
 </svg>
