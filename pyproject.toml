@@ -27,14 +27,22 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = ["poethepoet>=0.48.0", "pre-commit>=4.6.0", "ruff>=0.15.21"]
+dev = [
+    "djlint>=1.40.8",
+    "poethepoet>=0.48.0",
+    "pre-commit>=4.6.0",
+    "ruff>=0.15.21",
+]
+
+[tool.djlint]
+profile = "jinja"
 
 [tool.poe.tasks]
 dev = "fastapi dev src/starlette_admin_demo/app.py"
 worker = "celery -A starlette_admin_demo.celery_app worker --loglevel=info"
 beat = "celery -A starlette_admin_demo.celery_app beat --loglevel=info"
 flower = "celery -A starlette_admin_demo.celery_app flower --port=5555"
-format.sequence = ["ruff format", "ruff check . --fix"]
+format.sequence = ["ruff format", "ruff check . --fix", "djlint templates --reformat --format-css --format-js" ]
 format.default_item_type = "cmd"
 
 [tool.uv.sources]
