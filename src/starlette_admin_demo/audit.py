@@ -1,15 +1,9 @@
 """Read-only audit trail. `AuditSubscriber` writes one `AuditLog` row per
 create/edit/delete/export/import event, admin-wide (subscribed in app.py).
 
-Uses the `*_COMMITTED` events, not `AFTER_CREATE`/`AFTER_EDIT`/`AFTER_DELETE`:
-`request.state.session` doesn't commit until the request ends, so the plain
-`AFTER_*` events can still be rolled back. Each handler opens its own session
-rather than reuse the request's, per the `after_*_committed` hook contract.
-
-Row/bulk actions (`adjust_budget`, `deactivate`, `approve`/`reject` in
-views.py) bypass create()/edit()/delete() and never fire those events, so
-they call `log_action()` directly through `request.state.session` instead,
-committing atomically with the action itself.
+Listens on the `*_COMMITTED` events rather than `AFTER_CREATE`/`AFTER_EDIT`/`AFTER_DELETE`,
+since those can still be rolled back before `request.state.session` commits. Row/bulk
+actions that bypass create()/edit()/delete() (see views.py) call `log_action()` directly instead.
 """
 
 from datetime import datetime
@@ -35,8 +29,8 @@ from starlette_admin.events import (
 from .config import engine
 from .models import Base
 
-# Not `__admin_repr__`: some models (LeaveRequest, Timesheet) build their repr
-# via a relationship, which risks DetachedInstanceError in *_COMMITTED hooks.
+# Not `__admin_repr__`: some models build their repr via a relationship,
+# which risks DetachedInstanceError in *_COMMITTED hooks.
 _LABEL_ATTRS = ("name", "title", "expense_number", "slug", "email")
 
 
@@ -57,10 +51,7 @@ class AuditLog(Base):
 
 class AuditLogView(ModelView):
     """Rows come only from `AuditSubscriber`/`log_action()`; not editable by any role.
-
-    Doesn't subclass `views.ModelView` (would be circular: that module imports
-    `log_action` from here), so shared cosmetic settings are repeated below.
-    """
+    Doesn't subclass `views.ModelView` (would be circular), so shared cosmetic settings are repeated below."""
 
     row_actions_display_type = RowActionsDisplayType.KEBAB
     row_actions_position = RowActionsPosition.AFTER_COLUMNS
@@ -126,11 +117,8 @@ async def _write_audit(
 
 
 def log_action(request: Request, resource: str, pk: Any, detail: str) -> None:
-    """Log a row/bulk action that bypasses create()/edit()/delete().
-
-    Call after staging the mutation on `request.state.session`, so the audit
-    row commits (or rolls back) with the action's own transaction.
-    """
+    """Log a row/bulk action that bypasses create()/edit()/delete(). Call after staging
+    the mutation on `request.state.session`, so the audit row commits with the action's own transaction."""
     session: Session = request.state.session
     session.add(
         AuditLog(

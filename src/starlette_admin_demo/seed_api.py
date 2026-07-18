@@ -1,22 +1,7 @@
-"""Seed the 07-hr example through the running admin's own HTTP endpoints,
-unlike `seed.py` which writes straight to the database. Drives the real
-create/edit forms over HTTP, including login and CSRF, as a browser would.
-
-CSRF is a signed double-submit cookie (`CSRFMiddleware`): `GET` sets it,
-`POST` must echo it back via `X-CSRFToken` - see `_csrf_headers` and
-`create`/`edit`/`bulk_action`. Create doesn't return the new pk in the body,
-so every create submits `_continue_editing` to redirect to
-`/{key}/edit?pk=<new pk>` instead, and the pk is read off `Location`.
-
-Department creation is strictly sequential (a child's `parent=` needs its
-parent's pk); everything else fans out across a thread pool once its
-payload's dependencies are baked in. Data generation itself is always
-single-threaded, so a run's output depends only on `--seed`, never on
-`--concurrency` (see `create_many`).
-
-Employees/projects are soft-deletable, so unlike seed.py the soft-delete
-pass runs last here - deleting earlier would break later creates that
-still need to reference those rows as relations.
+"""Seed the 07-hr example through the running admin's own HTTP endpoints, unlike
+`seed.py` which writes straight to the database. Drives the real create/edit forms
+over HTTP, including login and CSRF (`CSRFMiddleware`: `GET` sets the cookie, `POST`
+echoes it back via `X-CSRFToken`), as a browser would.
 
 Usage:
     uv run seed_api.py                       # against http://127.0.0.1:8000
@@ -24,9 +9,8 @@ Usage:
     uv run seed_api.py --concurrency 16       # more requests in flight
     uv run seed_api.py --no-reset             # append instead of wiping first
 
-The target app must already be running. Schema reset (`--reset`, default)
-still goes straight through SQLAlchemy, same as seed.py - there's no admin
-endpoint for wiping the database.
+The target app must already be running. Schema reset (`--reset`, default) still goes
+straight through SQLAlchemy, same as seed.py - there's no admin endpoint for wiping the database.
 """
 
 import argparse
@@ -79,13 +63,9 @@ DEFAULT_CONCURRENCY = 8
 
 
 class AdminApiClient:
-    """Talks to the running admin the same way a logged-in browser would.
-
-    Login and departments run one request at a time; everything else fans
-    out across a thread pool via `create_many`/`edit_many`. Safe to share
-    `httpx.Client` across threads: the csrf cookie is set once by `_login`
-    and never reissued, so concurrent readers never race a writer.
-    """
+    """Talks to the running admin the same way a logged-in browser would. Login and
+    departments run one request at a time; everything else fans out across a thread
+    pool via `create_many`/`edit_many`."""
 
     def __init__(
         self,
@@ -122,12 +102,9 @@ class AdminApiClient:
     def create(
         self, key: str, data: dict[str, Any], files: dict[str, Any] | None = None
     ) -> str:
-        """POST a new row to `/{key}/create`, and return its new pk.
-
-        Submitting `_continue_editing` makes the framework redirect to
-        `/{key}/edit?pk=<new pk>` instead of the list page, so the pk can be
-        read straight off the `Location` header.
-        """
+        """POST a new row to `/{key}/create`, and return its new pk. Submitting
+        `_continue_editing` makes the framework redirect to `/{key}/edit?pk=<new pk>`
+        instead of the list page, so the pk can be read off the `Location` header."""
         self.http.get(f"/{key}/create")
         response = self.http.post(
             f"/{key}/create",

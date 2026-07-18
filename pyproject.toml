@@ -9,9 +9,12 @@ dependencies = [
     "fastapi[standard]>=0.139.0",
     "markdown>=3.10.2",
     "pillow>=12.3.0",
-    "pymysql>=1.2.0",
     "sqlalchemy>=2.0.51",
     "starlette-admin",
+    "psycopg[binary,pool]>=3.3.4",
+    "celery[redis]>=5.6.3",
+    "redis>=6.4.0",
+    "flower>=2.0.1",
 ]
 
 [project.scripts]
@@ -27,6 +30,9 @@ dev = ["poethepoet>=0.48.0", "pre-commit>=4.6.0", "ruff>=0.15.21"]
 
 [tool.poe.tasks]
 dev = "fastapi dev src/starlette_admin_demo/app.py"
+worker = "celery -A starlette_admin_demo.celery_app worker --loglevel=info"
+beat = "celery -A starlette_admin_demo.celery_app beat --loglevel=info"
+flower = "celery -A starlette_admin_demo.celery_app flower --port=5555"
 format.sequence = ["ruff format", "ruff check . --fix"]
 format.default_item_type = "cmd"
 

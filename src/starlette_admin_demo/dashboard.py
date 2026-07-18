@@ -1,14 +1,11 @@
-"""Dashboard index view. `HRDashboardView` replaces the admin's default index
-with stock widgets plus one custom widget, `OrgChartWidget`, which renders
-the department hierarchy with ApexTree.
+"""Dashboard index view. `HRDashboardView` replaces the admin's default index with
+stock widgets plus one custom widget, `OrgChartWidget`, which renders the department
+hierarchy with ApexTree - a reference for writing your own: subclass `BaseWidget`,
+point `template` at a file under `templates_dir`, return context from `get_context`,
+and declare vendor scripts in `additional_js_links`.
 
-`OrgChartWidget` is the reference for writing your own: subclass
-`BaseWidget`, point `template` at a file under `templates_dir`, return
-context from `get_context`, and declare vendor scripts in `additional_js_links`.
-
-Every number is queried live from the request's session. Month/year
-aggregates format dates via `_sql_date_format`, which picks the right SQL
-function per database - extend it to support another one.
+Every number here is a plain Redis read via a `stats.py` callback (see cache.py), never
+a live query, so a page load never blocks on the database.
 """
 
 from calendar import monthrange
@@ -18,8 +15,6 @@ from datetime import date
 from typing import Any, ClassVar
 from uuid import uuid4
 
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session, selectinload
 from starlette.requests import Request
 from starlette_admin import (
     Breakpoints,
@@ -38,44 +33,36 @@ from starlette_admin import (
 )
 from starlette_admin.widgets import BaseWidget
 
-from .config import engine
+from . import stats
 from .models import (
-    Department,
-    Employee,
     EmploymentType,
-    Expense,
     ExpenseCategory,
     ExpenseStatus,
-    LeaveRequest,
     LeaveStatus,
     LeaveType,
-    Project,
     ProjectStatus,
-    Task,
     TaskPriority,
     TaskStatus,
-    Timesheet,
 )
+from .stats import _fmt_money, _last_months, _title
 
 # Pinned to 1.3.0: last release without a license gate (no watermark). The
 # API used here is stable across 1.x, so upgrading needs a license key only.
 APEXTREE_JS = "https://cdn.jsdelivr.net/npm/apextree@1.3.0/apextree.min.js"
 
-# Colorblind-safe categorical palette; order is fixed (assigned to series in
-# this order) and validated for adjacent-pair CVD separation.
+# Colorblind-safe categorical palette; order is fixed (assigned to series in this order).
 CATEGORICAL = [
-    "#2a78d6",  # blue
-    "#1baf7a",  # aqua
-    "#eda100",  # yellow
-    "#008300",  # green
-    "#4a3aa7",  # violet
-    "#e34948",  # red
-    "#e87ba4",  # magenta
-    "#eb6834",  # orange
+    "#2a78d6",
+    "#1baf7a",
+    "#eda100",
+    "#008300",
+    "#4a3aa7",
+    "#e34948",
+    "#e87ba4",
+    "#eb6834",
 ]
 
-# Mirrors the Tabler badge semantics used in the list views: green=settled
-# good, amber=waiting, red=rejected, gray=inert, blue/violet=informative.
+# Mirrors the Tabler badge semantics used in the list views (green=good, amber=waiting, red=rejected).
 GOOD = "#0ca30c"
 WARNING = "#fab219"
 CRITICAL = "#d03b3b"
@@ -124,79 +111,14 @@ EXPENSE_STATUS_COLORS = {
 }
 
 
-def _title(value: str) -> str:
-    """Human readable label for an enum value, e.g. "in_progress" -> "In Progress"."""
-    return value.replace("_", " ").title()
-
-
-def _fmt_money(value: Any) -> str:
-    """Compact dollar amount for cards and org chart nodes, e.g. "$1.2M"."""
-    amount = float(value or 0)
-    if amount >= 1_000_000:
-        return f"${amount / 1_000_000:.1f}M"
-    if amount >= 1_000:
-        return f"${amount / 1_000:.0f}K"
-    return f"${amount:.0f}"
-
-
-def _sql_date_format(fmt: str, column: Any) -> Any:
-    """Format a date column with `%Y`/`%m` specifiers, dialect-agnostic:
-    SQLite's `strftime(fmt, col)` vs MySQL's `DATE_FORMAT(col, fmt)`."""
-    if engine.dialect.name == "mysql":
-        return func.date_format(column, fmt)
-    return func.strftime(fmt, column)
-
-
-def _month_key(value: date) -> str:
-    """Inverse of `_month_key_to_date`: a plain `date` back to its
-    "YYYY-MM" key, matching `_sql_date_format('%Y-%m', ...)` output."""
-    return f"{value.year:04d}-{value.month:02d}"
-
-
-def _month_key_to_date(key: str) -> date:
-    """First-of-month `date` for a `_sql_date_format('%Y-%m', ...)` key like
-    "2026-03". Used to turn a month-key cutoff into a plain date comparison
-    so WHERE clauses stay sargable (indexable) instead of wrapping the
-    column in a date-formatting function."""
-    return date.fromisoformat(f"{key}-01")
-
-
-def _last_months(count: int) -> list[tuple[str, str]]:
-    """Last `count` calendar months, oldest first, as (key, label) pairs;
-    `key` matches `_sql_date_format('%Y-%m', ...)` output."""
-    year, month = date.today().year, date.today().month
-    months: list[tuple[str, str]] = []
-    for _ in range(count):
-        months.append(
-            (f"{year:04d}-{month:02d}", date(year, month, 1).strftime("%b %y"))
-        )
-        month -= 1
-        if month == 0:
-            year, month = year - 1, 12
-    months.reverse()
-    return months
-
-
 # ── Custom widget: ApexTree organization chart ───────────────────────────────
 
 
 @dataclass
 class OrgChartWidget(BaseWidget):
-    """Renders a hierarchy as an interactive ApexTree organization chart.
-
-    Data source agnostic: `tree_callback` returns the nested node structure
-    ApexTree consumes. Each node needs `id`, `children`, and a `data` payload
-    (`name`, `people`, `budget`, `color`).
-
-    Args:
-        title: Card heading.
-        tree_callback: Async callable returning the root node of the tree.
-        height: Canvas height in pixels.
-        direction: Direction the tree grows from the root:
-            "top", "bottom", "left", or "right".
-        node_width: Width of a node card in pixels.
-        node_height: Height of a node card in pixels.
-    """
+    """Renders a hierarchy as an interactive ApexTree organization chart. Data source
+    agnostic: `tree_callback` returns the nested node structure ApexTree consumes, each
+    node needing `id`, `children`, and a `data` payload (`name`, `people`, `budget`, `color`)."""
 
     template: ClassVar[str] = "widgets/org_chart_widget.html"
 
@@ -231,7 +153,7 @@ class HRDashboardView(CustomView):
     """Admin index page: KPI cards, the org chart, and tabbed analytics.
 
     The widget tree is rebuilt on every request (`widget` is a callable),
-    so headline descriptions can be computed from the same live queries
+    so headline descriptions can be computed from the same cached values
     that feed the charts.
     """
 
@@ -245,37 +167,21 @@ class HRDashboardView(CustomView):
         )
 
     async def _build_widget(self, request: Request) -> ColumnWidget:
-        session: Session = request.state.session
         today = date.today()
         month_start = today.replace(day=1)
         month_end = today.replace(day=monthrange(today.year, today.month)[1])
 
-        hires = await self._hires_sparkline(request)
+        hires = await stats.hires_sparkline(request)
         hire_counts = hires[0]["data"]
         hiring_up = len(hire_counts) >= 2 and hire_counts[-1] >= hire_counts[-2]
 
-        total_projects = session.scalar(
-            select(func.count(Project.id)).where(Project.deleted_at.is_(None))
-        )
-        pending_expense_total = session.scalar(
-            select(func.coalesce(func.sum(Expense.total_amount), 0)).where(
-                Expense.status == ExpenseStatus.SUBMITTED
-            )
-        )
-        salaried = session.scalar(
-            select(func.count(Employee.id)).where(
-                Employee.deleted_at.is_(None), Employee.salary.is_not(None)
-            )
-        )
-        billable_this_month = session.scalar(
-            select(func.coalesce(func.sum(Timesheet.hours), 0)).where(
-                Timesheet.date.between(month_start, month_end),
-                Timesheet.is_billable.is_(True),
-            )
-        )
+        total_projects = await stats.total_projects(request)
+        pending_expense_total = await stats.pending_expense_total(request)
+        salaried = await stats.salaried_count(request)
+        billable_this_month = await stats.billable_hours_this_month(request)
 
         month_labels = [label for _, label in _last_months(12)]
-        division_names = self._division_names(session)
+        division_names = await stats.division_names(request)
 
         def stat_col(widget: StatWidget) -> Col:
             return Col(widget, breakpoints=Breakpoints(default=12, md=6, lg=3))
@@ -285,10 +191,10 @@ class HRDashboardView(CustomView):
                 TextWidget(
                     content=(
                         "## HR Overview\n\n"
-                        "Live snapshot of the workforce, projects, time tracking, "
-                        "and spend. Every figure is queried from the database on "
-                        "each page load; follow a card to drill into the "
-                        "underlying records."
+                        "Snapshot of the workforce, projects, time tracking, "
+                        "and spend, cached in Redis and refreshed the moment "
+                        "something underneath it changes; follow a card to "
+                        "drill into the underlying records."
                     ),
                     markdown=True,
                     card=True,
@@ -310,9 +216,9 @@ class HRDashboardView(CustomView):
                         stat_col(
                             StatWidget(
                                 title="Employees",
-                                value_callback=self._count_employees,
+                                value_callback=stats.count_employees,
                                 chart_type="area",
-                                chart_callback=self._hires_sparkline,
+                                chart_callback=stats.hires_sparkline,
                                 description=(
                                     "Hiring is up this month"
                                     if hiring_up
@@ -331,7 +237,7 @@ class HRDashboardView(CustomView):
                         stat_col(
                             StatWidget(
                                 title="Active Projects",
-                                value_callback=self._count_active_projects,
+                                value_callback=stats.count_active_projects,
                                 description=f"of {total_projects} projects overall",
                                 description_icon="fa-solid fa-diagram-project",
                                 color="primary",
@@ -344,7 +250,7 @@ class HRDashboardView(CustomView):
                         stat_col(
                             StatWidget(
                                 title="Pending Leave",
-                                value_callback=self._count_pending_leave,
+                                value_callback=stats.count_pending_leave,
                                 description="requests awaiting review",
                                 description_icon="fa-solid fa-hourglass-half",
                                 color="warning",
@@ -357,7 +263,7 @@ class HRDashboardView(CustomView):
                         stat_col(
                             StatWidget(
                                 title="Open Tasks",
-                                value_callback=self._count_open_tasks,
+                                value_callback=stats.count_open_tasks,
                                 description="in backlog, progress, or review",
                                 description_icon="fa-solid fa-list-check",
                                 color="info",
@@ -376,7 +282,7 @@ class HRDashboardView(CustomView):
                         stat_col(
                             StatWidget(
                                 title="Annual Payroll",
-                                value_callback=self._annual_payroll,
+                                value_callback=stats.annual_payroll,
                                 description=f"across {salaried} salaried employees",
                                 description_icon="fa-solid fa-money-check-dollar",
                                 color="primary",
@@ -385,9 +291,9 @@ class HRDashboardView(CustomView):
                         stat_col(
                             StatWidget(
                                 title="Hours This Month",
-                                value_callback=self._hours_this_month,
+                                value_callback=stats.hours_this_month,
                                 chart_type="area",
-                                chart_callback=self._hours_sparkline,
+                                chart_callback=stats.hours_sparkline,
                                 description=f"{billable_this_month:.0f}h billable",
                                 description_icon="fa-solid fa-clock",
                                 color="success",
@@ -401,7 +307,7 @@ class HRDashboardView(CustomView):
                         stat_col(
                             StatWidget(
                                 title="Expenses To Review",
-                                value_callback=self._count_submitted_expenses,
+                                value_callback=stats.count_submitted_expenses,
                                 description=f"{_fmt_money(pending_expense_total)} awaiting approval",
                                 description_icon="fa-solid fa-receipt",
                                 color="warning",
@@ -414,7 +320,7 @@ class HRDashboardView(CustomView):
                         stat_col(
                             StatWidget(
                                 title="Departments",
-                                value_callback=self._count_departments,
+                                value_callback=stats.count_departments,
                                 description=f"{len(division_names)} top level divisions",
                                 description_icon="fa-solid fa-sitemap",
                                 color="secondary",
@@ -430,7 +336,7 @@ class HRDashboardView(CustomView):
                 # ApexTree measures its container at render time.
                 OrgChartWidget(
                     title="Organization Chart",
-                    tree_callback=self._org_tree,
+                    tree_callback=stats.org_tree,
                     height=440,
                 ),
                 TabsWidget(
@@ -460,7 +366,7 @@ class HRDashboardView(CustomView):
                             ChartWidget(
                                 title="Headcount by Division",
                                 chart_type="bar",
-                                series_callback=self._headcount_by_division,
+                                series_callback=stats.headcount_by_division,
                                 options={
                                     "colors": [CATEGORICAL[0]],
                                     "plotOptions": {"bar": {"horizontal": True}},
@@ -473,7 +379,7 @@ class HRDashboardView(CustomView):
                             ChartWidget(
                                 title="Employment Type Mix",
                                 chart_type="donut",
-                                series_callback=self._employment_type_series,
+                                series_callback=stats.employment_type_series,
                                 options={
                                     "labels": [_title(t.value) for t in EmploymentType],
                                     "colors": CATEGORICAL[: len(EmploymentType)],
@@ -489,7 +395,7 @@ class HRDashboardView(CustomView):
                             ChartWidget(
                                 title="Hires per Year",
                                 chart_type="area",
-                                series_callback=self._hires_per_year,
+                                series_callback=stats.hires_per_year,
                                 options={
                                     "colors": [CATEGORICAL[0]],
                                     "xaxis": {"categories": year_labels},
@@ -502,7 +408,7 @@ class HRDashboardView(CustomView):
                             ChartWidget(
                                 title="Leave Requests by Type and Status",
                                 chart_type="bar",
-                                series_callback=self._leave_stacked_series,
+                                series_callback=stats.leave_stacked_series,
                                 options={
                                     "chart": {"stacked": True},
                                     "colors": [
@@ -535,7 +441,7 @@ class HRDashboardView(CustomView):
                                             "Department",
                                             "Hired",
                                         ],
-                                        rows_callback=self._recent_hires,
+                                        rows_callback=stats.recent_hires,
                                     ),
                                     breakpoints=Breakpoints(default=12, lg=6),
                                 ),
@@ -549,7 +455,7 @@ class HRDashboardView(CustomView):
                                             "Starts",
                                             "Days",
                                         ],
-                                        rows_callback=self._upcoming_leave,
+                                        rows_callback=stats.upcoming_leave,
                                     ),
                                     breakpoints=Breakpoints(default=12, lg=6),
                                 ),
@@ -572,7 +478,7 @@ class HRDashboardView(CustomView):
                         ChartWidget(
                             title="Projects by Status",
                             chart_type="donut",
-                            series_callback=self._projects_by_status,
+                            series_callback=stats.projects_by_status,
                             options={
                                 "labels": [_title(s.value) for s in ProjectStatus],
                                 "colors": [
@@ -583,7 +489,7 @@ class HRDashboardView(CustomView):
                         ChartWidget(
                             title="Tasks by Status",
                             chart_type="bar",
-                            series_callback=self._tasks_by_status,
+                            series_callback=stats.tasks_by_status,
                             options={
                                 "colors": [TASK_STATUS_COLORS[s] for s in TaskStatus],
                                 "plotOptions": {"bar": {"distributed": True}},
@@ -596,7 +502,7 @@ class HRDashboardView(CustomView):
                         ChartWidget(
                             title="Tasks by Priority",
                             chart_type="bar",
-                            series_callback=self._tasks_by_priority,
+                            series_callback=stats.tasks_by_priority,
                             options={
                                 "colors": [
                                     TASK_PRIORITY_COLORS[p] for p in TaskPriority
@@ -615,7 +521,7 @@ class HRDashboardView(CustomView):
                 ChartWidget(
                     title="Project Budget vs Spend by Division ($K)",
                     chart_type="bar",
-                    series_callback=self._budget_by_division,
+                    series_callback=stats.budget_by_division,
                     height=320,
                     options={
                         "colors": [CATEGORICAL[0], CATEGORICAL[1]],
@@ -639,7 +545,7 @@ class HRDashboardView(CustomView):
                                             "Spent",
                                             "Burn",
                                         ],
-                                        rows_callback=self._top_projects,
+                                        rows_callback=stats.top_projects,
                                     ),
                                     breakpoints=Breakpoints(default=12, lg=6),
                                 ),
@@ -653,7 +559,7 @@ class HRDashboardView(CustomView):
                                             "Due",
                                             "Priority",
                                         ],
-                                        rows_callback=self._overdue_tasks,
+                                        rows_callback=stats.overdue_tasks,
                                     ),
                                     breakpoints=Breakpoints(default=12, lg=6),
                                 ),
@@ -673,7 +579,7 @@ class HRDashboardView(CustomView):
                             ChartWidget(
                                 title="Hours Logged per Month",
                                 chart_type="line",
-                                series_callback=self._hours_per_month,
+                                series_callback=stats.hours_per_month,
                                 options={
                                     "colors": [CATEGORICAL[0], CATEGORICAL[2]],
                                     "xaxis": {"categories": month_labels},
@@ -687,7 +593,7 @@ class HRDashboardView(CustomView):
                             ChartWidget(
                                 title="Billable Share (last 12 months)",
                                 chart_type="radialBar",
-                                series_callback=self._billable_share,
+                                series_callback=stats.billable_share,
                                 options={
                                     "labels": ["Billable"],
                                     "colors": [GOOD],
@@ -703,7 +609,7 @@ class HRDashboardView(CustomView):
                             ChartWidget(
                                 title="Expense Amounts by Category",
                                 chart_type="donut",
-                                series_callback=self._expenses_by_category,
+                                series_callback=stats.expenses_by_category,
                                 options={
                                     "labels": [
                                         _title(c.value) for c in ExpenseCategory
@@ -717,7 +623,7 @@ class HRDashboardView(CustomView):
                             ChartWidget(
                                 title="Expense Amounts by Status",
                                 chart_type="bar",
-                                series_callback=self._expenses_by_status,
+                                series_callback=stats.expenses_by_status,
                                 options={
                                     "colors": [
                                         EXPENSE_STATUS_COLORS[s] for s in ExpenseStatus
@@ -739,538 +645,7 @@ class HRDashboardView(CustomView):
                 TableWidget(
                     title="Expenses Awaiting Approval",
                     columns=["Number", "Employee", "Category", "Amount", "Submitted"],
-                    rows_callback=self._pending_expenses,
+                    rows_callback=stats.pending_expenses,
                 ),
             ]
         )
-
-    # ── stat callbacks ───────────────────────────────────────────────────────
-
-    async def _count_employees(self, request: Request) -> int:
-        session: Session = request.state.session
-        return (
-            session.scalar(
-                select(func.count(Employee.id)).where(Employee.deleted_at.is_(None))
-            )
-            or 0
-        )
-
-    async def _count_active_projects(self, request: Request) -> int:
-        session: Session = request.state.session
-        return (
-            session.scalar(
-                select(func.count(Project.id)).where(
-                    Project.deleted_at.is_(None),
-                    Project.status == ProjectStatus.ACTIVE,
-                )
-            )
-            or 0
-        )
-
-    async def _count_pending_leave(self, request: Request) -> int:
-        session: Session = request.state.session
-        return (
-            session.scalar(
-                select(func.count(LeaveRequest.id)).where(
-                    LeaveRequest.status == LeaveStatus.PENDING
-                )
-            )
-            or 0
-        )
-
-    async def _count_open_tasks(self, request: Request) -> int:
-        session: Session = request.state.session
-        return (
-            session.scalar(
-                select(func.count(Task.id)).where(
-                    Task.status.not_in([TaskStatus.COMPLETED, TaskStatus.CANCELLED])
-                )
-            )
-            or 0
-        )
-
-    async def _annual_payroll(self, request: Request) -> str:
-        session: Session = request.state.session
-        total = session.scalar(
-            select(func.coalesce(func.sum(Employee.salary), 0)).where(
-                Employee.deleted_at.is_(None)
-            )
-        )
-        return _fmt_money(total)
-
-    async def _hours_this_month(self, request: Request) -> str:
-        session: Session = request.state.session
-        today = date.today()
-        month_start = today.replace(day=1)
-        month_end = today.replace(day=monthrange(today.year, today.month)[1])
-        total = session.scalar(
-            select(func.coalesce(func.sum(Timesheet.hours), 0)).where(
-                Timesheet.date.between(month_start, month_end)
-            )
-        )
-        return f"{total:.0f}h"
-
-    async def _count_submitted_expenses(self, request: Request) -> int:
-        session: Session = request.state.session
-        return (
-            session.scalar(
-                select(func.count(Expense.id)).where(
-                    Expense.status == ExpenseStatus.SUBMITTED
-                )
-            )
-            or 0
-        )
-
-    async def _count_departments(self, request: Request) -> int:
-        session: Session = request.state.session
-        return (
-            session.scalar(
-                select(func.count(Department.id)).where(Department.is_active.is_(True))
-            )
-            or 0
-        )
-
-    # ── sparkline callbacks ──────────────────────────────────────────────────
-
-    async def _hires_sparkline(self, request: Request) -> list[dict[str, Any]]:
-        session: Session = request.state.session
-        months = _last_months(12)
-        cutoff = _month_key_to_date(months[0][0])
-        month_expr = _sql_date_format("%Y-%m", Employee.hire_date)
-        counts = dict(
-            session.execute(
-                select(month_expr, func.count(Employee.id))
-                .where(
-                    Employee.deleted_at.is_(None),
-                    Employee.hire_date >= cutoff,
-                )
-                .group_by(month_expr)
-            ).all()
-        )
-        return [{"name": "Hires", "data": [counts.get(key, 0) for key, _ in months]}]
-
-    async def _hours_sparkline(self, request: Request) -> list[dict[str, Any]]:
-        session: Session = request.state.session
-        months = _last_months(12)
-        cutoff = _month_key_to_date(months[0][0])
-        # Group by the raw (indexed) date instead of a month-formatting
-        # expression: it lets the DB return rows in index order and bucket
-        # into months here, rather than sorting the whole matched range to
-        # satisfy GROUP BY on a function of the column.
-        rows = session.execute(
-            select(Timesheet.date, func.sum(Timesheet.hours))
-            .where(Timesheet.date >= cutoff)
-            .group_by(Timesheet.date)
-        ).all()
-        totals: dict[str, float] = {}
-        for day, hours in rows:
-            key = _month_key(day)
-            totals[key] = totals.get(key, 0.0) + float(hours or 0)
-        return [
-            {
-                "name": "Hours",
-                "data": [totals.get(key, 0.0) for key, _ in months],
-            }
-        ]
-
-    # ── chart callbacks ──────────────────────────────────────────────────────
-
-    def _division_names(self, session: Session) -> list[str]:
-        """Top level division names (the root's direct children), by id order."""
-        root_id = session.scalar(
-            select(Department.id).where(Department.parent_id.is_(None))
-        )
-        return list(
-            session.scalars(
-                select(Department.name)
-                .where(Department.parent_id == root_id)
-                .order_by(Department.id)
-            )
-        )
-
-    def _division_of(self, session: Session) -> dict[int, str]:
-        """Map every department id to the name of its top level division.
-
-        The root department maps to itself, so employees or projects attached
-        directly to it still land in a bucket.
-        """
-        rows = session.execute(
-            select(Department.id, Department.name, Department.parent_id)
-        ).all()
-        by_id = {dep_id: (name, parent_id) for dep_id, name, parent_id in rows}
-
-        def climb(dep_id: int) -> str:
-            name, parent_id = by_id[dep_id]
-            # Stop one level below the root; the root maps to itself.
-            while parent_id is not None and by_id[parent_id][1] is not None:
-                name, parent_id = by_id[parent_id]
-            return name
-
-        return {dep_id: climb(dep_id) for dep_id in by_id}
-
-    def _employee_headcounts(self, session: Session) -> dict[int, int]:
-        """Live employee count per `department_id`. `_headcount_by_division`
-        and `_org_tree` both need this aggregate over the (potentially
-        millions-of-rows) employees table; starlette-admin invokes each
-        widget's callback separately, so cache it on the session for the
-        life of the request instead of running it twice."""
-        cached = session.info.get("employee_headcounts")
-        if cached is None:
-            cached = dict(
-                session.execute(
-                    select(Employee.department_id, func.count(Employee.id))
-                    .where(
-                        Employee.deleted_at.is_(None),
-                        Employee.department_id.is_not(None),
-                    )
-                    .group_by(Employee.department_id)
-                ).all()
-            )
-            session.info["employee_headcounts"] = cached
-        return cached
-
-    async def _headcount_by_division(self, request: Request) -> list[dict[str, Any]]:
-        session: Session = request.state.session
-        division_of = self._division_of(session)
-        totals: dict[str, int] = dict.fromkeys(self._division_names(session), 0)
-        rows = self._employee_headcounts(session).items()
-        for department_id, count in rows:
-            division = division_of.get(department_id)
-            if division in totals:
-                totals[division] += count
-        return [{"name": "Employees", "data": list(totals.values())}]
-
-    async def _employment_type_series(self, request: Request) -> list[int]:
-        session: Session = request.state.session
-        counts = dict(
-            session.execute(
-                select(Employee.employment_type, func.count(Employee.id))
-                .where(Employee.deleted_at.is_(None))
-                .group_by(Employee.employment_type)
-            ).all()
-        )
-        return [counts.get(employment_type, 0) for employment_type in EmploymentType]
-
-    async def _hires_per_year(self, request: Request) -> list[dict[str, Any]]:
-        session: Session = request.state.session
-        year_expr = _sql_date_format("%Y", Employee.hire_date)
-        counts = dict(
-            session.execute(
-                select(year_expr, func.count(Employee.id))
-                .where(Employee.deleted_at.is_(None))
-                .group_by(year_expr)
-            ).all()
-        )
-        years = [str(date.today().year - offset) for offset in range(9, -1, -1)]
-        return [{"name": "Hires", "data": [counts.get(year, 0) for year in years]}]
-
-    async def _leave_stacked_series(self, request: Request) -> list[dict[str, Any]]:
-        session: Session = request.state.session
-        rows = session.execute(
-            select(
-                LeaveRequest.status,
-                LeaveRequest.type,
-                func.count(LeaveRequest.id),
-            ).group_by(LeaveRequest.status, LeaveRequest.type)
-        ).all()
-        counts: dict[tuple[LeaveStatus, LeaveType], int] = {
-            (status, leave_type): count for status, leave_type, count in rows
-        }
-        return [
-            {
-                "name": _title(status.value),
-                "data": [
-                    counts.get((status, leave_type), 0) for leave_type in LeaveType
-                ],
-            }
-            for status in LeaveStatus
-        ]
-
-    async def _projects_by_status(self, request: Request) -> list[int]:
-        session: Session = request.state.session
-        counts = dict(
-            session.execute(
-                select(Project.status, func.count(Project.id))
-                .where(Project.deleted_at.is_(None))
-                .group_by(Project.status)
-            ).all()
-        )
-        return [counts.get(status, 0) for status in ProjectStatus]
-
-    async def _tasks_by_status(self, request: Request) -> list[dict[str, Any]]:
-        session: Session = request.state.session
-        counts = dict(
-            session.execute(
-                select(Task.status, func.count(Task.id)).group_by(Task.status)
-            ).all()
-        )
-        return [
-            {"name": "Tasks", "data": [counts.get(status, 0) for status in TaskStatus]}
-        ]
-
-    async def _tasks_by_priority(self, request: Request) -> list[dict[str, Any]]:
-        session: Session = request.state.session
-        counts = dict(
-            session.execute(
-                select(Task.priority, func.count(Task.id)).group_by(Task.priority)
-            ).all()
-        )
-        return [
-            {
-                "name": "Tasks",
-                "data": [counts.get(priority, 0) for priority in TaskPriority],
-            }
-        ]
-
-    async def _budget_by_division(self, request: Request) -> list[dict[str, Any]]:
-        session: Session = request.state.session
-        division_of = self._division_of(session)
-        divisions = self._division_names(session)
-        budget: dict[str, float] = dict.fromkeys(divisions, 0.0)
-        spent: dict[str, float] = dict.fromkeys(divisions, 0.0)
-        rows = session.execute(
-            select(
-                Project.department_id,
-                func.sum(Project.budget),
-                func.sum(Project.spent),
-            )
-            .where(Project.deleted_at.is_(None), Project.department_id.is_not(None))
-            .group_by(Project.department_id)
-        ).all()
-        for department_id, budget_sum, spent_sum in rows:
-            division = division_of.get(department_id)
-            if division in budget:
-                budget[division] += float(budget_sum or 0)
-                spent[division] += float(spent_sum or 0)
-        return [
-            # Reported in thousands of dollars to keep axis labels short.
-            {"name": "Budget", "data": [round(budget[d] / 1000) for d in divisions]},
-            {"name": "Spent", "data": [round(spent[d] / 1000) for d in divisions]},
-        ]
-
-    async def _hours_per_month(self, request: Request) -> list[dict[str, Any]]:
-        session: Session = request.state.session
-        months = _last_months(12)
-        cutoff = _month_key_to_date(months[0][0])
-        # Grouping by the raw date (and is_billable) matches the covering
-        # index's column order exactly, so the DB can stream sums without
-        # sorting; bucket the ~366 resulting rows into months here instead.
-        rows = session.execute(
-            select(Timesheet.date, Timesheet.is_billable, func.sum(Timesheet.hours))
-            .where(Timesheet.date >= cutoff)
-            .group_by(Timesheet.date, Timesheet.is_billable)
-        ).all()
-        totals: dict[tuple[str, bool], float] = {}
-        for day, billable, hours in rows:
-            key = (_month_key(day), bool(billable))
-            totals[key] = totals.get(key, 0.0) + float(hours or 0)
-        return [
-            {
-                "name": "Billable",
-                "data": [totals.get((key, True), 0.0) for key, _ in months],
-            },
-            {
-                "name": "Non-billable",
-                "data": [totals.get((key, False), 0.0) for key, _ in months],
-            },
-        ]
-
-    async def _billable_share(self, request: Request) -> list[float]:
-        session: Session = request.state.session
-        months = _last_months(12)
-        cutoff = _month_key_to_date(months[0][0])
-        total = session.scalar(
-            select(func.coalesce(func.sum(Timesheet.hours), 0)).where(
-                Timesheet.date >= cutoff
-            )
-        )
-        billable = session.scalar(
-            select(func.coalesce(func.sum(Timesheet.hours), 0)).where(
-                Timesheet.date >= cutoff, Timesheet.is_billable.is_(True)
-            )
-        )
-        if not total:
-            return [0.0]
-        return [round(float(billable) / float(total) * 100, 1)]
-
-    async def _expenses_by_category(self, request: Request) -> list[float]:
-        session: Session = request.state.session
-        totals = dict(
-            session.execute(
-                select(Expense.category, func.sum(Expense.total_amount)).group_by(
-                    Expense.category
-                )
-            ).all()
-        )
-        return [
-            round(float(totals.get(category, 0) or 0), 2)
-            for category in ExpenseCategory
-        ]
-
-    async def _expenses_by_status(self, request: Request) -> list[dict[str, Any]]:
-        session: Session = request.state.session
-        totals = dict(
-            session.execute(
-                select(Expense.status, func.sum(Expense.total_amount)).group_by(
-                    Expense.status
-                )
-            ).all()
-        )
-        return [
-            {
-                "name": "Amount",
-                "data": [
-                    round(float(totals.get(status, 0) or 0)) for status in ExpenseStatus
-                ],
-            }
-        ]
-
-    # ── table callbacks ──────────────────────────────────────────────────────
-
-    async def _recent_hires(self, request: Request) -> list[list[Any]]:
-        session: Session = request.state.session
-        employees = session.scalars(
-            select(Employee)
-            .where(Employee.deleted_at.is_(None))
-            .order_by(Employee.hire_date.desc())
-            .limit(6)
-            .options(selectinload(Employee.department))
-        ).all()
-        return [
-            [
-                employee.name,
-                employee.job_title,
-                employee.department.name if employee.department else "Unassigned",
-                employee.hire_date.strftime("%Y-%m-%d"),
-            ]
-            for employee in employees
-        ]
-
-    async def _upcoming_leave(self, request: Request) -> list[list[Any]]:
-        session: Session = request.state.session
-        leave_requests = session.scalars(
-            select(LeaveRequest)
-            .where(
-                LeaveRequest.start_date >= date.today(),
-                LeaveRequest.status.in_([LeaveStatus.APPROVED, LeaveStatus.PENDING]),
-            )
-            .order_by(LeaveRequest.start_date.asc())
-            .limit(6)
-            .options(selectinload(LeaveRequest.employee))
-        ).all()
-        return [
-            [
-                leave.employee.name,
-                _title(leave.type.value),
-                _title(leave.status.value),
-                leave.start_date.strftime("%Y-%m-%d"),
-                f"{leave.days_requested:g}",
-            ]
-            for leave in leave_requests
-        ]
-
-    async def _top_projects(self, request: Request) -> list[list[Any]]:
-        session: Session = request.state.session
-        projects = session.scalars(
-            select(Project)
-            .where(Project.deleted_at.is_(None))
-            .order_by(Project.budget.desc())
-            .limit(6)
-            .options(selectinload(Project.department))
-        ).all()
-        return [
-            [
-                project.name,
-                project.department.name if project.department else "Unassigned",
-                _fmt_money(project.budget),
-                _fmt_money(project.spent),
-                f"{float(project.spent) / float(project.budget) * 100:.0f}%"
-                if project.budget
-                else "n/a",
-            ]
-            for project in projects
-        ]
-
-    async def _overdue_tasks(self, request: Request) -> list[list[Any]]:
-        session: Session = request.state.session
-        tasks = session.scalars(
-            select(Task)
-            .where(
-                Task.due_date < date.today(),
-                Task.status.not_in([TaskStatus.COMPLETED, TaskStatus.CANCELLED]),
-            )
-            .order_by(Task.due_date.asc())
-            .limit(6)
-            .options(selectinload(Task.project), selectinload(Task.assignee))
-        ).all()
-        return [
-            [
-                task.title,
-                task.project.name,
-                task.assignee.name if task.assignee else "Unassigned",
-                task.due_date.strftime("%Y-%m-%d"),
-                _title(task.priority.value),
-            ]
-            for task in tasks
-        ]
-
-    async def _pending_expenses(self, request: Request) -> list[list[Any]]:
-        session: Session = request.state.session
-        expenses = session.scalars(
-            select(Expense)
-            .where(Expense.status == ExpenseStatus.SUBMITTED)
-            .order_by(Expense.submitted_at.desc())
-            .limit(6)
-            .options(selectinload(Expense.employee))
-        ).all()
-        return [
-            [
-                expense.expense_number,
-                expense.employee.name,
-                _title(expense.category.value),
-                f"${expense.total_amount:,.2f}",
-                expense.submitted_at.strftime("%Y-%m-%d")
-                if expense.submitted_at
-                else "",
-            ]
-            for expense in expenses
-        ]
-
-    # ── org chart callback ───────────────────────────────────────────────────
-
-    async def _org_tree(self, request: Request) -> dict[str, Any]:
-        """Nested department tree in the shape ApexTree renders: each node
-        shows name, headcount (self + descendants), budget, and the
-        department's stored color as card background."""
-        session: Session = request.state.session
-        departments = session.scalars(select(Department).order_by(Department.id)).all()
-        head_counts = self._employee_headcounts(session)
-        children_of: dict[int | None, list[Department]] = {}
-        for department in departments:
-            children_of.setdefault(department.parent_id, []).append(department)
-
-        def build(department: Department) -> tuple[dict[str, Any], int]:
-            child_nodes: list[dict[str, Any]] = []
-            people = head_counts.get(department.id, 0)
-            for child in children_of.get(department.id, []):
-                node, subtree_people = build(child)
-                child_nodes.append(node)
-                people += subtree_people
-            color = department.color or "#6b7280"
-            return {
-                "id": str(department.id),
-                "data": {
-                    "name": department.name,
-                    "people": f"{people} {'person' if people == 1 else 'people'}",
-                    "budget": _fmt_money(department.budget),
-                    "color": color,
-                },
-                "options": {"nodeBGColor": color, "nodeBGColorHover": color},
-                "children": child_nodes,
-            }, people
-
-        roots = children_of.get(None, [])
-        if not roots:
-            return {"id": "empty", "data": {"name": "No departments"}, "children": []}
-        root_node, _ = build(roots[0])
-        return root_node

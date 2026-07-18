@@ -61,7 +61,7 @@ class AvatarNameField(StringField):
         }
 
     async def serialize_value(self, request: Request, value: Any) -> Any:
-        name, avatar_key = value.get("name"), value.get("avatar_key")  # from parse_obj
+        name, avatar_key = value.get("name"), value.get("avatar_key")
         if request.state.action != RequestAction.LIST:
             return name
         if avatar_key is not None:

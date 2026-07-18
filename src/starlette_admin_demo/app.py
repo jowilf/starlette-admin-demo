@@ -1,14 +1,5 @@
-"""
-07-hr: an HR admin, ported from the Filament demo's HR module
-(filamentphp/demo, app/Models/HR).
-
-Department -> Employee -> {LeaveRequest, Task, Timesheet, Expense} -> Project,
-with Employee and Project soft-deletable through the shared
-`SoftDeleteMixin` / `SoftDeleteModelView` pair defined in models.py / views.py.
-
-Timesheet and LeaveRequest are grouped under a single "Time & Attendance"
-dropdown in the menu.
-"""
+"""07-hr: an HR admin, ported from the Filament demo's HR module
+(filamentphp/demo, app/Models/HR)."""
 
 from contextlib import asynccontextmanager
 import logging
@@ -24,6 +15,11 @@ from starlette_admin.logging import configure_logging
 
 from .audit import AuditLog, AuditLogView, AuditSubscriber
 from .auth import MyAuthProvider
+from .cache import (
+    DashboardCacheSubscriber,
+    dashboard_cache_lifespan,
+    trigger_dashboard_refresh,
+)
 from .config import SECRET_KEY, UMAMI_HOST, UMAMI_WEBSITE_ID, engine
 from .dashboard import HRDashboardView
 from .models import (
@@ -36,6 +32,7 @@ from .models import (
     Task,
     Timesheet,
 )
+from .search import SearchRestampSubscriber
 from .views import (
     DepartmentView,
     EmployeeView,
@@ -49,11 +46,13 @@ from .views import (
 
 @asynccontextmanager
 async def lifespan(_: Starlette):
-    # Tables are created here, but data is not: seeding is handled by the
-    # standalone seed.py script, which populates a running app through the
-    # admin's own HTTP endpoints. See seed.py for usage.
+    # Creates tables only; seeding is handled separately by seed.py.
     Base.metadata.create_all(engine)
-    yield
+    # Kick off one immediate cache refresh so the dashboard isn't empty
+    # until Celery Beat's first tick (see cache.py).
+    trigger_dashboard_refresh()
+    async with dashboard_cache_lifespan():
+        yield
 
 
 app = FastAPI(lifespan=lifespan)
@@ -64,12 +63,10 @@ admin = Admin(
     title="Example: HR",
     secret_key=SECRET_KEY,
     templates_dir="templates",
-    # The dashboard replaces the default index page; see dashboard.py.
     index_view=HRDashboardView(),
     auth_provider=MyAuthProvider(),
-    # Deliberately strict, low limits to make the "capacity exceeded"
-    # errors easy to trigger and demo.
-    import_config=ImportConfig(max_upload_size=1 * 1024, max_rows=10),  # 1 KB
+    # Deliberately strict, low limits so the "capacity exceeded" errors are easy to demo.
+    import_config=ImportConfig(max_upload_size=1 * 1024, max_rows=10),
     export_config=ExportConfig(max_rows=10),
 )
 
@@ -96,6 +93,10 @@ admin.add_view(AuditLogView(AuditLog, icon="fa fa-clipboard-list"))
 
 # Writes an AuditLog row for create/edit/delete/export/import on every view above.
 admin.events.subscribe(AuditSubscriber())
+# Triggers an out-of-band dashboard cache refresh on the same events (see cache.py).
+admin.events.subscribe(DashboardCacheSubscriber())
+# Triggers the search-restamp outbox drain on edit/import (see search.py).
+admin.events.subscribe(SearchRestampSubscriber())
 
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 

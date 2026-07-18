@@ -1,9 +1,7 @@
 """SQLAlchemy models for the HR module, ported from the Filament HR demo
-(filamentphp/demo, app/Models/HR): Department, Employee, LeaveRequest,
-Project, Task, Timesheet, Expense, ExpenseLine.
-
-`SoftDeleteMixin` marks a model as hide-on-delete (Employee, Project); pair
-with `SoftDeleteModelView` in views.py.
+(filamentphp/demo, app/Models/HR). `SoftDeleteMixin` marks a model as hide-on-delete
+(Employee, Project, pair with `SoftDeleteModelView` in views.py); every table also
+carries a `search_vector` column and index, backed by the trigger infrastructure in search.py.
 """
 
 import enum
@@ -32,12 +30,15 @@ class Base(DeclarativeBase):
     """Base class for every SQLAlchemy declarative model in the HR example."""
 
 
+# Deferred past `Base`: search.py imports `Base` back from this still-executing
+# module, which only resolves once `Base` already exists as an attribute here.
+from .search import search_vector_column, search_vector_index  # noqa: E402
+
+
 class SoftDeleteMixin:
-    """Adds `deleted_at`: NULL means live, any other value means "deleted"
-    through the admin. Pair with `SoftDeleteModelView` (views.py) so
-    list/count queries hide trashed rows and delete stamps this instead of
-    running DELETE.
-    """
+    """Adds `deleted_at`: NULL means live, any other value means deleted through the
+    admin. Pair with `SoftDeleteModelView` (views.py) so list/count queries hide
+    trashed rows and delete stamps this instead of running DELETE."""
 
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True, default=None, index=True
@@ -117,18 +118,20 @@ class ExpenseStatus(str, enum.Enum):
 
 class Department(Base):
     __tablename__ = "departments"
+    __table_args__ = (search_vector_index("departments"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     parent_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("departments.id"), nullable=True, index=True
     )
-    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     slug: Mapped[str] = mapped_column(String(220), nullable=False, unique=True)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    budget: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
-    headcount: Mapped[int] = mapped_column(Integer, default=0)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    budget: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, index=True)
+    headcount: Mapped[int] = mapped_column(Integer, default=0, index=True)
     color: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    is_active: Mapped[bool] = mapped_column(default=True)
+    is_active: Mapped[bool] = mapped_column(default=True, index=True)
+    search_vector: Mapped[str | None] = search_vector_column()
 
     parent: Mapped["Department | None"] = relationship(
         "Department", remote_side=[id], back_populates="children"
@@ -153,39 +156,40 @@ class Department(Base):
 class Employee(SoftDeleteMixin, Base):
     __tablename__ = "employees"
     __table_args__ = (
-        # deleted_at IS NULL matches virtually every row, so on its own it
-        # doesn't narrow anything - these composites earn their keep by
-        # making the dashboard's aggregates covering (index-only) instead of
-        # a table lookup per matched row. salary rides along on the
-        # hire_date composite purely so the annual-payroll SUM stays
-        # covering too; it isn't part of any WHERE/GROUP BY here.
+        # `deleted_at IS NULL` alone doesn't narrow anything (matches virtually every
+        # row); these composites earn their keep by making the dashboard's aggregates
+        # covering (index-only) instead of a table lookup per matched row.
         Index("ix_employees_deleted_at_hire_date", "deleted_at", "hire_date", "salary"),
         Index(
             "ix_employees_deleted_at_employment_type", "deleted_at", "employment_type"
         ),
         Index("ix_employees_deleted_at_department_id", "deleted_at", "department_id"),
+        search_vector_index("employees"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     avatar: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     email: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
     phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     hire_date: Mapped[date] = mapped_column(Date, nullable=False)
-    job_title: Mapped[str] = mapped_column(String(200), nullable=False)
+    job_title: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     employment_type: Mapped[EmploymentType] = mapped_column(
         Enum(EmploymentType),
         default=EmploymentType.FULL_TIME,
         nullable=False,
         index=True,
     )
-    salary: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    salary: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2), nullable=True, index=True
+    )
     skills: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     metadata_: Mapped[dict[str, Any] | None] = mapped_column(
         "metadata", JSON, nullable=True
     )
-    is_active: Mapped[bool] = mapped_column(default=True)
+    is_active: Mapped[bool] = mapped_column(default=True, index=True)
+    search_vector: Mapped[str | None] = search_vector_column()
 
     department_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("departments.id"), nullable=True, index=True
@@ -230,6 +234,7 @@ class LeaveRequest(Base):
         # Covers the leave-by-type-and-status chart: unfiltered COUNT(*)
         # grouped by (status, type) - a covering index-only scan.
         Index("ix_leave_requests_status_type", "status", "type"),
+        search_vector_index("leave_requests"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -243,14 +248,19 @@ class LeaveRequest(Base):
     status: Mapped[LeaveStatus] = mapped_column(
         Enum(LeaveStatus), default=LeaveStatus.PENDING, nullable=False
     )
-    start_date: Mapped[date] = mapped_column(Date, nullable=False)
-    end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    end_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     start_time: Mapped[time | None] = mapped_column(Time, nullable=True)
     end_time: Mapped[time | None] = mapped_column(Time, nullable=True)
-    days_requested: Mapped[Decimal] = mapped_column(Numeric(4, 1), nullable=False)
-    reason: Mapped[str] = mapped_column(Text, nullable=False)
-    reviewer_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    days_requested: Mapped[Decimal] = mapped_column(
+        Numeric(4, 1), nullable=False, index=True
+    )
+    reason: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    reviewer_notes: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True, index=True
+    )
+    search_vector: Mapped[str | None] = search_vector_column()
 
     employee: Mapped["Employee"] = relationship(
         "Employee", back_populates="leave_requests", foreign_keys=[employee_id]
@@ -270,27 +280,29 @@ class LeaveRequest(Base):
 
 class Project(SoftDeleteMixin, Base):
     __tablename__ = "projects"
+    __table_args__ = (search_vector_index("projects"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     department_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("departments.id"), nullable=True, index=True
     )
-    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     slug: Mapped[str] = mapped_column(String(220), nullable=False, unique=True)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     status: Mapped[ProjectStatus] = mapped_column(
         Enum(ProjectStatus), default=ProjectStatus.PLANNING, nullable=False, index=True
     )
     priority: Mapped[TaskPriority] = mapped_column(
-        Enum(TaskPriority), default=TaskPriority.MEDIUM, nullable=False
+        Enum(TaskPriority), default=TaskPriority.MEDIUM, nullable=False, index=True
     )
     budget: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, index=True)
-    spent: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    spent: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, index=True)
     estimated_hours: Mapped[Decimal] = mapped_column(Numeric(8, 1), default=0)
     actual_hours: Mapped[Decimal] = mapped_column(Numeric(8, 1), default=0)
-    start_date: Mapped[date] = mapped_column(Date, nullable=False)
-    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     plan: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    search_vector: Mapped[str | None] = search_vector_column()
 
     department: Mapped["Department | None"] = relationship(
         "Department", back_populates="projects"
@@ -313,11 +325,10 @@ class Project(SoftDeleteMixin, Base):
 class Task(Base):
     __tablename__ = "tasks"
     __table_args__ = (
-        # Covers the overdue-tasks table widget. due_date leads (not
-        # status): the query ranges/sorts on due_date and only excludes 2 of
-        # 6 statuses via NOT IN, which isn't selective enough to lead an
-        # index and can't satisfy ORDER BY due_date if it did.
+        # Covers the overdue-tasks table widget. due_date leads: the NOT IN on
+        # status excludes only 2 of 6 values, too unselective to lead the index.
         Index("ix_tasks_due_date_status", "due_date", "status"),
+        search_vector_index("tasks"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -327,8 +338,8 @@ class Task(Base):
     assigned_to: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("employees.id"), nullable=True, index=True
     )
-    title: Mapped[str] = mapped_column(String(200), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     status: Mapped[TaskStatus] = mapped_column(
         Enum(TaskStatus), default=TaskStatus.BACKLOG, nullable=False, index=True
     )
@@ -336,13 +347,16 @@ class Task(Base):
         Enum(TaskPriority), default=TaskPriority.MEDIUM, nullable=False, index=True
     )
     estimated_hours: Mapped[Decimal | None] = mapped_column(
-        Numeric(6, 1), nullable=True
+        Numeric(6, 1), nullable=True, index=True
     )
-    actual_hours: Mapped[Decimal] = mapped_column(Numeric(6, 1), default=0)
+    actual_hours: Mapped[Decimal] = mapped_column(Numeric(6, 1), default=0, index=True)
     due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True, index=True
+    )
     labels: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     sort: Mapped[int] = mapped_column(Integer, default=0)
+    search_vector: Mapped[str | None] = search_vector_column()
 
     project: Mapped["Project"] = relationship("Project", back_populates="tasks")
     assignee: Mapped["Employee | None"] = relationship(
@@ -362,13 +376,10 @@ class Task(Base):
 class Timesheet(Base):
     __tablename__ = "timesheets"
     __table_args__ = (
-        # Covers hours-per-month/billable-share charts: ranges on date,
-        # groups/filters on is_billable, and sums hours. hours is included
-        # so the scan is index-only (covering) - without it, a date range
-        # that isn't highly selective (e.g. "last 12 months" on a table that
-        # only spans ~18 months) can be slower than a full table scan,
-        # since every matched row needs an extra lookup just for hours.
+        # Covers hours-per-month/billable-share charts (ranges on date, groups on
+        # is_billable, sums hours); hours rides along so the scan stays index-only.
         Index("ix_timesheets_date_is_billable", "date", "is_billable", "hours"),
+        search_vector_index("timesheets"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -382,12 +393,13 @@ class Timesheet(Base):
         Integer, ForeignKey("projects.id"), nullable=False, index=True
     )
     date: Mapped[date] = mapped_column(Date, nullable=False)
-    hours: Mapped[Decimal] = mapped_column(Numeric(4, 1), nullable=False)
+    hours: Mapped[Decimal] = mapped_column(Numeric(4, 1), nullable=False, index=True)
     minutes: Mapped[int] = mapped_column(Integer, default=0)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     is_billable: Mapped[bool] = mapped_column(default=True)
-    hourly_rate: Mapped[Decimal] = mapped_column(Numeric(8, 2), default=0)
-    total_cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    hourly_rate: Mapped[Decimal] = mapped_column(Numeric(8, 2), default=0, index=True)
+    total_cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0, index=True)
+    search_vector: Mapped[str | None] = search_vector_column()
 
     employee: Mapped["Employee"] = relationship("Employee", back_populates="timesheets")
     task: Mapped["Task | None"] = relationship("Task", back_populates="timesheets")
@@ -412,6 +424,7 @@ class Expense(Base):
         # Covers the amounts-by-category chart: unfiltered SUM(total_amount)
         # grouped by category, as a covering scan.
         Index("ix_expenses_category_total_amount", "category", "total_amount"),
+        search_vector_index("expenses"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -428,15 +441,22 @@ class Expense(Base):
     category: Mapped[ExpenseCategory] = mapped_column(
         Enum(ExpenseCategory), nullable=False
     )
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
-    submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0, index=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True, index=True
+    )
+    approved_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True, index=True
+    )
     approved_by_id: Mapped[int | None] = mapped_column(
         "approved_by", Integer, ForeignKey("employees.id"), nullable=True, index=True
     )
     receipt_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    # Hyphenated numbers like EXP-2024-0001 tokenize into searchable parts
+    # (exp, 2024, 0001) as well as the whole token.
+    search_vector: Mapped[str | None] = search_vector_column()
 
     employee: Mapped["Employee"] = relationship(
         "Employee", back_populates="expenses", foreign_keys=[employee_id]
@@ -459,6 +479,7 @@ class Expense(Base):
 
 class ExpenseLine(Base):
     __tablename__ = "expense_lines"
+    __table_args__ = (search_vector_index("expense_lines"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     expense_id: Mapped[int] = mapped_column(
@@ -469,6 +490,7 @@ class ExpenseLine(Base):
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     date: Mapped[date] = mapped_column(Date, nullable=False)
+    search_vector: Mapped[str | None] = search_vector_column()
 
     expense: Mapped["Expense"] = relationship("Expense", back_populates="expense_lines")
 

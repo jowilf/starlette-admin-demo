@@ -1,29 +1,16 @@
-"""Standalone seed script: generates a Faker dataset and writes it straight
-to the database through the app's own SQLAlchemy table metadata (no running
-app or HTTP round trip needed).
+"""Standalone seed script: generates a Faker dataset and writes it straight to the
+database through the app's own SQLAlchemy table metadata (no running app or HTTP
+round trip needed).
 
 Usage:
     uv run seed                # default volumes
     uv run seed --scale 5      # about five times as much data
     uv run seed --scale 3500   # roughly a million employees
 
-Departments come from a fixed org chart (`ORG_CHART`) and don't scale.
-Every other entity's volume is `round(base_count * scale)` (`BASE_COUNTS`,
-`scaled_counts()`).
-
-Built to stay fast at millions of rows:
-
-- Rows are plain dicts pushed through Core INSERT executemany in
-  `CHUNK_SIZE` batches (`insert_chunked`) - no ORM instances, identity map,
-  or per-row flush, and memory stays flat regardless of `--scale`.
-- Primary keys are assigned up front (`next_id`), so foreign keys are plain
-  integer draws from a `range` and no RETURNING round trip is needed.
-- Faker only runs while filling `TextPools`; the actual rows sample those
-  pools with `random`, which is orders of magnitude cheaper per row.
-- The ~20% of employees with an avatar share seven files copied once from
-  `assets/avatar01-07.png` instead of getting one copy each.
-- On SQLite, journalling/fsync are relaxed for the seeding connection; the
-  dataset is disposable and rebuilt from scratch on any failure.
+Built to stay fast at millions of rows: rows are plain dicts pushed through Core
+INSERT executemany in `CHUNK_SIZE` batches (`insert_chunked`), with primary keys
+assigned up front (`next_id`) so foreign keys are plain integer draws and no
+RETURNING round trip is needed.
 """
 
 import argparse
@@ -40,7 +27,7 @@ from typing import Any, Callable, Sequence
 
 from faker import Faker
 from PIL import Image
-from sqlalchemy import Connection, Table, bindparam, func, select
+from sqlalchemy import Connection, Table, bindparam, func, select, text
 from starlette_admin.storage import FileInfo, secure_filename
 
 from .config import avatars_storage
@@ -71,10 +58,8 @@ AVATAR_UPLOAD_FOLDER = "avatars"
 # Rows per executemany batch; also how often progress prints and commits run.
 CHUNK_SIZE = 10_000
 
-# Fixed org chart: (name, parent name, color); parents listed before children
-# so each parent's id exists when its child row is built. Executive plus the
-# seven division heads are umbrella nodes; the rest are leaf teams most
-# employees actually belong to (see `pick_department`).
+# Fixed org chart: (name, parent name, color); parents listed before children so
+# each parent's id exists when its child row is built (see `pick_department`).
 ORG_CHART: list[tuple[str, str | None, str]] = [
     ("Executive", None, "#6b7280"),
     ("Engineering", "Executive", "#3b82f6"),
@@ -118,6 +103,13 @@ TASK_LABELS = [
 
 EMPLOYMENT_TYPES = [
     ("full_time", 72), ("part_time", 10), ("contractor", 12), ("intern", 6),
+]  # fmt: skip
+
+# Combined with a drawn `pools.jobs` entry so job titles don't collapse onto
+# Faker's ~639-word job corpus alone (see `build_employee_row`).
+JOB_LEVELS = [
+    ("", 55), ("Senior ", 20), ("Lead ", 8), ("Junior ", 8),
+    ("Associate ", 5), ("Principal ", 2), ("Staff ", 2),
 ]  # fmt: skip
 
 SALARY_RANGES = {
@@ -236,10 +228,17 @@ def rand_date(rng: random.Random, days_back: int, days_forward: int = 0) -> date
     return date.fromordinal(TODAY_ORDINAL + rng.randint(-days_back, days_forward))
 
 
+def pool_size(base: int, scale: float, cap: int) -> int:
+    """Grow a text pool with `scale` so the same Faker value doesn't turn up
+    thousands of times at large volumes; `cap` bounds pool generation to a
+    couple seconds even at the highest supported scale."""
+    return min(cap, max(base, round(base * scale)))
+
+
 def rand_datetime(rng: random.Random, days_back: int) -> datetime:
-    return datetime.combine(
-        rand_date(rng, days_back), datetime.min.time()
-    ) + timedelta(minutes=rng.randint(0, 1439))
+    return datetime.combine(rand_date(rng, days_back), datetime.min.time()) + timedelta(
+        minutes=rng.randint(0, 1439)
+    )
 
 
 def attach_avatar(asset: Path, dims: tuple[int, int]) -> dict[str, Any]:
@@ -269,6 +268,20 @@ def next_id(conn: Connection, column: Any) -> int:
     is assigned up front; starting past MAX(id) keeps `--no-reset` runs from
     colliding with existing rows."""
     return (conn.execute(select(func.max(column))).scalar() or 0) + 1
+
+
+def sync_sequence(conn: Connection, table: Table) -> None:
+    """Rows here are inserted with an explicit `id` (see `next_id`), which never
+    advances Postgres's identity sequence - left alone, the app's own inserts would
+    later collide with rows already seeded. No-op on SQLite, which has no sequence."""
+    if conn.engine.dialect.name != "postgresql":
+        return
+    conn.execute(
+        text(
+            f"SELECT setval(pg_get_serial_sequence('{table.name}', 'id'), "
+            f"(SELECT COALESCE(MAX(id), 1) FROM {table.name}))"
+        )
+    )
 
 
 def insert_rows(conn: Connection, table: Table, rows: list[dict[str, Any]]) -> None:
@@ -329,28 +342,66 @@ def _email_token(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", ".", value.lower()).strip(".")
 
 
-def build_text_pools(fake: Faker) -> TextPools:
+# Extra English locales folded into the first/last-name pools: a single
+# locale's corpus plateaus at ~690/1000 unique values no matter how many are
+# drawn (verified empirically), so widening the pool means drawing from more
+# locales, not more calls. `sorted()` keeps `--seed` reproducible - set
+# iteration order isn't stable across runs.
+NAME_LOCALES = ["en_US", "en_GB", "en_IE", "en_CA", "en_AU"]
+
+
+def _locale_name_pool(attr: str, seed: int) -> list[str]:
+    names: set[str] = set()
+    for offset, locale in enumerate(NAME_LOCALES):
+        locale_fake = Faker(locale)
+        locale_fake.seed_instance(seed + offset)
+        names.update(getattr(locale_fake, attr)() for _ in range(3000))
+    # A stray non-ASCII name would otherwise corrupt `_email_token` output.
+    return sorted(name for name in names if name.isascii())
+
+
+def build_text_pools(fake: Faker, scale: float, seed: int) -> TextPools:
     return TextPools(
         first_names=[
             (name, _email_token(name))
-            for name in (fake.first_name() for _ in range(400))
+            for name in _locale_name_pool("first_name", seed)
         ],
         last_names=[
             (name, _email_token(name))
-            for name in (fake.last_name() for _ in range(400))
+            for name in _locale_name_pool("last_name", seed + 1000)
         ],
-        jobs=[fake.job() for _ in range(300)],
-        phones=[fake.phone_number() for _ in range(400)],
-        titles=[fake.sentence(nb_words=6).rstrip(".") for _ in range(500)],
-        line_items=[fake.sentence(nb_words=4).rstrip(".") for _ in range(300)],
-        sentences6=[fake.sentence(nb_words=6) for _ in range(300)],
-        sentences8=[fake.sentence(nb_words=8) for _ in range(500)],
-        paragraphs=[fake.paragraph(nb_sentences=2) for _ in range(400)],
+        # job draws from a fixed ~639-value corpus that more draws won't
+        # grow; combined with JOB_LEVELS at row-build time instead.
+        jobs=[fake.job() for _ in range(650)],
+        phones=[
+            fake.phone_number() for _ in range(pool_size(400, scale, 50_000))
+        ],
+        titles=[
+            fake.sentence(nb_words=6).rstrip(".")
+            for _ in range(pool_size(500, scale, 50_000))
+        ],
+        line_items=[
+            fake.sentence(nb_words=4).rstrip(".")
+            for _ in range(pool_size(300, scale, 30_000))
+        ],
+        sentences6=[
+            fake.sentence(nb_words=6) for _ in range(pool_size(300, scale, 50_000))
+        ],
+        sentences8=[
+            fake.sentence(nb_words=8) for _ in range(pool_size(500, scale, 50_000))
+        ],
+        paragraphs=[
+            fake.paragraph(nb_sentences=2)
+            for _ in range(pool_size(400, scale, 30_000))
+        ],
         catch_phrases=[
             (name, slugify(name))
-            for name in (fake.catch_phrase().title() for _ in range(400))
+            for name in (
+                fake.catch_phrase().title()
+                for _ in range(pool_size(400, scale, 50_000))
+            )
         ],
-        buzz_phrases=[fake.bs() for _ in range(200)],
+        buzz_phrases=[fake.bs() for _ in range(pool_size(200, scale, 30_000))],
     )
 
 
@@ -362,10 +413,8 @@ def pick_department(
     leaf_departments: Sequence[Any],
     parent_departments: Sequence[Any],
 ) -> Any:
-    """Most employees belong to a leaf team; a small slice reports directly
-    to a division head (an umbrella department with children), the way a
-    VP's own direct reports would sit a level above any one team.
-    """
+    """Most employees belong to a leaf team; a small slice reports directly to a
+    division head (an umbrella department with children)."""
     if parent_departments and rng.random() < 0.08:
         return rng.choice(parent_departments)
     return rng.choice(leaf_departments)
@@ -398,7 +447,7 @@ def build_employee_row(
             TODAY_ORDINAL - rng.randint(20 * 365, 64 * 365)
         ),
         "hire_date": rand_date(rng, 12 * 365),
-        "job_title": rng.choice(pools.jobs),
+        "job_title": f"{pick(rng, JOB_LEVELS)}{rng.choice(pools.jobs)}",
         "employment_type": EmploymentType(employment_type),
         "salary": salary,
         "skills": skills or None,
@@ -612,7 +661,7 @@ def seed(config: SeedConfig) -> None:
 
     Base.metadata.create_all(engine)
 
-    pools = build_text_pools(fake)
+    pools = build_text_pools(fake, config.scale, config.seed)
     # Each asset is copied into storage once; every seeded avatar then reuses
     # one of these FileInfo dicts instead of writing a file per employee.
     avatar_infos = [
@@ -648,6 +697,7 @@ def seed(config: SeedConfig) -> None:
                 }
             )
         insert_rows(conn, Department.__table__, department_rows)
+        sync_sequence(conn, Department.__table__)
         conn.commit()
         print(f"  departments: {len(ORG_CHART)}/{len(ORG_CHART)}")
 
@@ -681,6 +731,7 @@ def seed(config: SeedConfig) -> None:
         insert_chunked(
             conn, Employee.__table__, "employees", len(employee_ids), employee_row
         )
+        sync_sequence(conn, Employee.__table__)
 
         # Real headcount, now that every employee has a department.
         conn.execute(
@@ -712,6 +763,7 @@ def seed(config: SeedConfig) -> None:
                 project_ids[i] in deleted_projects,
             ),
         )
+        sync_sequence(conn, Project.__table__)
 
         task_id_start = next_id(conn, Task.id)
         task_ids = range(task_id_start, task_id_start + counts["tasks"])
@@ -724,6 +776,7 @@ def seed(config: SeedConfig) -> None:
             return build_task_row(rng, pools, task_ids[i], project_id, employee_ids)
 
         insert_chunked(conn, Task.__table__, "tasks", len(task_ids), task_row)
+        sync_sequence(conn, Task.__table__)
 
         insert_chunked(
             conn,
@@ -764,6 +817,8 @@ def seed(config: SeedConfig) -> None:
             done += len(expense_batch)
             print(f"\r  expenses: {done}/{total_expenses}", end="", flush=True)
         print()
+        sync_sequence(conn, Expense.__table__)
+        conn.commit()
 
     elapsed = time.perf_counter() - started
     total = len(ORG_CHART) + sum(counts.values())

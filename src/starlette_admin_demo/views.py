@@ -1,6 +1,7 @@
-"""Admin views. `SoftDeleteModelView` gives any model mixing in
-`SoftDeleteMixin` (see models.py) "delete hides the row" behavior for free;
-Employee and Project subclass it, neither exposing a restore UI.
+"""Admin views. `SoftDeleteModelView` gives any model mixing in `SoftDeleteMixin` (see
+models.py) "delete hides the row" behavior for free; Employee and Project subclass it,
+neither exposing a restore UI. `searchable_fields` on a view only drives its filter
+builder - the search bar itself always matches the model's `search_vector` (see search.py).
 """
 
 from collections import Counter
@@ -11,7 +12,7 @@ from typing import Any
 
 import anyio
 from markupsafe import escape
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 from starlette.requests import Request
 from starlette_admin import (
@@ -33,7 +34,7 @@ from starlette_admin import (
     flash,
     row_action,
 )
-from starlette_admin.contrib.sqla import InlineModelView
+from starlette_admin.contrib.sqla import InlineModelView as BaseInlineModelView
 from starlette_admin.contrib.sqla import ModelView as BaseModelView
 from starlette_admin.contrib.sqla.filters import IsNotNullFilter, IsNullFilter
 from starlette_admin.exceptions import ActionFailed, FormValidationError
@@ -42,6 +43,7 @@ from starlette_admin.helpers import on_commit
 from starlette_admin.validators import email, number_gt, number_range
 
 from .audit import log_action
+from .cache import trigger_dashboard_refresh
 from .config import avatars_storage
 from .fields import (
     AvatarNameField,
@@ -77,6 +79,7 @@ from .models import (
     TaskPriority,
     TaskStatus,
 )
+from .search import fts_match
 from .validators import unique
 
 # ── Soft-delete base views ───────────────────────────────────────────────────
@@ -89,6 +92,13 @@ class ModelView(BaseModelView):
     row_actions_position = RowActionsPosition.AFTER_COLUMNS
     show_goto_page = True
     search_auto_submit = True
+
+    def get_search_query(self, request: Request, term: str) -> Any:
+        # Replaces the library's per-column ILIKE scan with the model's GIN
+        # indexed `search_vector` (models.py / search.py). The vector already
+        # folds in related rows' names (e.g. an employee's department), so
+        # this single clause is the whole search - no per-view extras.
+        return fts_match(self.model, term)
 
     @staticmethod
     def _is_reader(request: Request) -> bool:
@@ -158,6 +168,8 @@ class SoftDeleteModelView(ModelView):
             on_commit(request, _make_after_delete_committed(obj, pk))
         return len(objs)
 
+class InlineModelView(BaseInlineModelView):
+    extra = 0
 
 # ── Department ───────────────────────────────────────────────────────────────
 
@@ -187,6 +199,16 @@ class DepartmentView(ModelView):
     ]
     exclude_fields_from_list = ["id", "description"]
     fields_default_sort = ["name"]
+    # search_vector also folds in the parent department's name.
+    searchable_fields = [
+        "name",
+        "slug",
+        "budget",
+        "headcount",
+        "is_active",
+        "parent",
+    ]
+    sortable_fields = ["name", "slug", "budget", "headcount", "is_active"]
     # Quick edits from the list page, without opening the full form.
     inline_editable_fields = ["is_active", "headcount"]
     form_layout = [
@@ -244,6 +266,7 @@ class DepartmentView(ModelView):
         department.budget = new_budget
         session.add(department)
         session.flush()  # the session is committed automatically at the end of each request
+        on_commit(request, trigger_dashboard_refresh)
         delta_sign = "+" if delta >= 0 else "-"
         log_action(
             request,
@@ -273,6 +296,7 @@ class DepartmentView(ModelView):
             department.is_active = False
             session.add(department)
         session.flush()  # the session is committed automatically at the end of each request
+        on_commit(request, trigger_dashboard_refresh)
         for department in departments:
             log_action(
                 request, self.key, department.id, f"Deactivated {department.name!r}"
@@ -355,23 +379,25 @@ class EmployeeView(SoftDeleteModelView):
         "skills",
         "metadata_",
     ]
-    # Listed explicitly since RelationFields (`department`) are excluded from
-    # the SQLAlchemy converter's default, and this way it keeps its filters.
+    # search_vector also folds in the department's name.
     searchable_fields = [
-        "id",
         "name",
         "email",
-        "phone",
-        "date_of_birth",
         "job_title",
         "employment_type",
         "salary",
         "hire_date",
-        "skills",
-        "metadata_",
         "is_active",
         "department",
-        "deleted_at",
+    ]
+    sortable_fields = [
+        "name",
+        "email",
+        "job_title",
+        "employment_type",
+        "salary",
+        "hire_date",
+        "is_active",
     ]
     fields_default_sort = ["name"]
     # Quick edits from the list page, without opening the full form.
@@ -425,14 +451,6 @@ class EmployeeView(SoftDeleteModelView):
             raise FormValidationError(errors)
         await super().validate(request, data)
 
-    def get_search_query(self, request: Request, term: str) -> Any:
-        # Base impl's allowlist is an exact type match, so it skips `name`
-        # (rendered via `AvatarNameField`, a `StringField` subclass). Added
-        # back explicitly so the search bar still matches employees by name.
-        return or_(
-            super().get_search_query(request, term), Employee.name.ilike(f"%{term}%")
-        )
-
     @staticmethod
     def initials(name: str) -> str:
         """Fallback for the profile header avatar when no image is uploaded,
@@ -482,6 +500,26 @@ class LeaveRequestView(ModelView):
     ]
     exclude_fields_from_list = ["id", "reason", "reviewer_notes"]
     fields_default_sort = [("start_date", True)]
+    # search_vector also covers list-excluded reason/reviewer_notes and folds
+    # in the employee's and approver's names.
+    searchable_fields = [
+        "type",
+        "status",
+        "start_date",
+        "end_date",
+        "days_requested",
+        "reviewed_at",
+        "employee",
+        "approver",
+    ]
+    sortable_fields = [
+        "start_date",
+        "end_date",
+        "days_requested",
+        "status",
+        "type",
+        "reviewed_at",
+    ]
     # Quick edits from the list page, without opening the full form.
     inline_editable_fields = ["status"]
     form_layout = [
@@ -610,6 +648,8 @@ class LeaveRequestView(ModelView):
             leave_request.reviewed_at = now
             session.add(leave_request)
         session.flush()  # the session is committed automatically at the end of each request
+        if leave_requests:
+            on_commit(request, trigger_dashboard_refresh)
         for leave_request in leave_requests:
             log_action(
                 request,
@@ -627,7 +667,6 @@ class ExpenseLineInline(InlineModelView):
     model = ExpenseLine
     fields = ["id", "description", "amount", "quantity", "unit_price", "date"]
     menu_label = "Expense lines"
-    extra = 1
     collapsed = True
 
 
@@ -643,7 +682,6 @@ class TaskInline(InlineModelView):
         "due_date",
     ]
     menu_label = "Tasks"
-    extra = 1
 
 
 class ProjectView(SoftDeleteModelView):
@@ -694,6 +732,26 @@ class ProjectView(SoftDeleteModelView):
     ]
     inlines = [TaskInline]
     fields_default_sort = ["name"]
+    # search_vector also covers list-excluded slug/description and folds in the department's name.
+    searchable_fields = [
+        "name",
+        "status",
+        "priority",
+        "budget",
+        "spent",
+        "start_date",
+        "end_date",
+        "department",
+    ]
+    sortable_fields = [
+        "name",
+        "status",
+        "priority",
+        "budget",
+        "spent",
+        "start_date",
+        "end_date",
+    ]
     # Quick edits from the list page, without opening the full form.
     inline_editable_fields = ["status", "priority"]
     form_layout = [
@@ -830,6 +888,28 @@ class TaskView(ModelView):
         "labels",
     ]
     exclude_fields_from_list = ["id", "description", "labels"]
+    # search_vector also covers list-excluded description and folds in the
+    # project's and assignee's names.
+    searchable_fields = [
+        "title",
+        "status",
+        "priority",
+        "estimated_hours",
+        "actual_hours",
+        "due_date",
+        "completed_at",
+        "project",
+        "assignee",
+    ]
+    sortable_fields = [
+        "title",
+        "status",
+        "priority",
+        "due_date",
+        "completed_at",
+        "estimated_hours",
+        "actual_hours",
+    ]
     # Quick edits from the list page, without opening the full form.
     inline_editable_fields = ["status", "priority"]
     form_layout = [
@@ -883,6 +963,19 @@ class TimesheetView(ModelView):
     ]
     exclude_fields_from_list = ["id", "description"]
     fields_default_sort = [("date", True)]
+    # search_vector also covers list-excluded description and folds in the
+    # employee, task and project names.
+    searchable_fields = [
+        "date",
+        "hours",
+        "is_billable",
+        "hourly_rate",
+        "total_cost",
+        "employee",
+        "task",
+        "project",
+    ]
+    sortable_fields = ["date", "hours", "is_billable", "hourly_rate", "total_cost"]
     # Quick edits from the list page, without opening the full form.
     inline_editable_fields = ["is_billable"]
     form_layout = [
@@ -931,6 +1024,27 @@ class ExpenseView(ModelView):
     exclude_fields_from_create = ["total_amount"]
     inlines = [ExpenseLineInline]
     fields_default_sort = [("submitted_at", True)]
+    # search_vector also covers list-excluded description/notes and folds in
+    # the employee, project and approver names.
+    searchable_fields = [
+        "expense_number",
+        "status",
+        "category",
+        "total_amount",
+        "submitted_at",
+        "approved_at",
+        "employee",
+        "project",
+        "approved_by",
+    ]
+    sortable_fields = [
+        "expense_number",
+        "status",
+        "category",
+        "total_amount",
+        "submitted_at",
+        "approved_at",
+    ]
     # Quick edits from the list page, without opening the full form.
     inline_editable_fields = ["status"]
     form_layout = [
@@ -984,12 +1098,9 @@ class ExpenseView(ModelView):
 
     @staticmethod
     async def _recompute_total_amount(request: Request, expense_id: int) -> None:
-        """Set `total_amount` to the sum of this expense's line items.
-
-        Runs after commit, once inline `ExpenseLine` rows are guaranteed
-        saved. Opens its own session rather than `request.state.session`,
-        which is already closed by this point (see `on_commit`'s docstring).
-        """
+        """Set `total_amount` to the sum of this expense's line items. Runs after
+        commit, once inline `ExpenseLine` rows are guaranteed saved, so it opens its
+        own session rather than `request.state.session`, already closed by this point."""
         engine = request.state.session.get_bind()
 
         def _update() -> None:
