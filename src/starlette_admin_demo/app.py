@@ -67,7 +67,7 @@ admin = Admin(
     index_view=HRDashboardView(),
     auth_provider=MyAuthProvider(),
     # Deliberately strict, low limits so the "capacity exceeded" errors are easy to demo.
-    import_config=ImportConfig(max_upload_size=1 * 1024, max_rows=10),
+    import_config=ImportConfig(max_upload_size=2 * 1024, max_rows=10),
     export_config=ExportConfig(max_rows=10),
 )
 

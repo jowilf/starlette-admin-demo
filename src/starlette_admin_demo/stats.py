@@ -41,6 +41,8 @@ def _title(value: str) -> str:
 def _fmt_money(value: Any) -> str:
     """Compact dollar amount for cards and org chart nodes, e.g. "$1.2M"."""
     amount = float(value or 0)
+    if amount >= 1_000_000_000:
+        return f"${amount / 1_000_000_000:.1f}B"
     if amount >= 1_000_000:
         return f"${amount / 1_000_000:.1f}M"
     if amount >= 1_000:

@@ -37,9 +37,15 @@ from starlette_admin.contrib.sqla import InlineModelView as BaseInlineModelView
 from starlette_admin.contrib.sqla import ModelView as BaseModelView
 from starlette_admin.contrib.sqla.filters import IsNotNullFilter, IsNullFilter
 from starlette_admin.exceptions import ActionFailed, FormValidationError
-from starlette_admin.fields import DecimalField, EmailField, IntegerField, SlugField
+from starlette_admin.fields import (
+    DecimalField,
+    EmailField,
+    IntegerField,
+    SlugField,
+    TextAreaField,
+)
 from starlette_admin.helpers import on_commit
-from starlette_admin.validators import email, number_gt, number_range
+from starlette_admin.validators import email, length, number_gt, number_range
 
 from .audit import log_action
 from .cache import trigger_dashboard_refresh
@@ -176,19 +182,28 @@ class InlineModelView(BaseInlineModelView):
 class DepartmentView(ModelView):
     fields = [
         "id",
-        "name",
+        StringField(
+            "name",
+            validators=[length(max=200)],
+        ),
         SlugField("slug", populate_from="name"),
-        "description",
+        TextAreaField(
+            "description",
+            validators=[length(max=2000)],
+        ),
         DollarField(
             "budget",
             help_text="Annual budget allocated to the department, in USD.",
-            validators=[number_range(min=0, message="Budget cannot be negative.")],
+            validators=[number_range(min=0, max=1_000_000_000)],
         ),
         IntegerField(
             "headcount",
-            validators=[number_range(min=0, message="Headcount cannot be negative.")],
+            validators=[number_range(min=0, max=100_000)],
         ),
-        ColorField("color"),
+        ColorField(
+            "color",
+            validators=[length(max=20)],
+        ),
         "is_active",
         HasOne(
             "parent",
@@ -327,11 +342,15 @@ class EmployeeView(SoftDeleteModelView):
             exclude_from_list=True,
             max_size=200 * 1024,  # 200 KB
         ),
-        AvatarNameField(avatars_storage=avatars_storage),
+        AvatarNameField(
+            avatars_storage=avatars_storage,
+            validators=[length(max=200)],
+        ),
         EmailField(
             "email",
             validators=[
                 email(),
+                length(max=200),
                 unique(
                     Employee,
                     Employee.email,
@@ -339,21 +358,39 @@ class EmployeeView(SoftDeleteModelView):
                 ),
             ],
         ),
-        "phone",
+        StringField(
+            "phone",
+            validators=[length(max=40)],
+        ),
         "date_of_birth",
-        "job_title",
+        StringField(
+            "job_title",
+            validators=[length(max=200)],
+        ),
         EmploymentTypeBadgeField("employment_type", enum=EmploymentType),
         DollarField(
             "salary",
             help_text="Annual salary in USD.",
-            validators=[number_gt(0, message="Salary must be a positive amount.")],
+            validators=[
+                number_gt(0),
+                number_range(max=1_000_000),
+            ],
         ),
         "hire_date",
         TagsField("skills", label="Skills"),
         ListField(
             CollectionField(
                 "metadata_",
-                fields=[StringField("property"), StringField("value")],
+                fields=[
+                    StringField(
+                        "property",
+                        validators=[length(max=100)],
+                    ),
+                    StringField(
+                        "value",
+                        validators=[length(max=500)],
+                    ),
+                ],
             ),
         ),
         "is_active",
@@ -488,11 +525,18 @@ class LeaveRequestView(ModelView):
         DecimalField(
             "days_requested",
             validators=[
-                number_gt(0, message="Days requested must be greater than zero.")
+                number_gt(0),
+                number_range(max=999.9),
             ],
         ),
-        "reason",
-        "reviewer_notes",
+        TextAreaField(
+            "reason",
+            validators=[length(max=2000)],
+        ),
+        TextAreaField(
+            "reviewer_notes",
+            validators=[length(max=2000)],
+        ),
         "reviewed_at",
     ]
     exclude_fields_from_list = ["id", "reason", "reviewer_notes"]
@@ -660,7 +704,26 @@ class LeaveRequestView(ModelView):
 
 class ExpenseLineInline(InlineModelView):
     model = ExpenseLine
-    fields = ["id", "description", "amount", "quantity", "unit_price", "date"]
+    fields = [
+        "id",
+        StringField(
+            "description",
+            validators=[length(max=300)],
+        ),
+        DecimalField(
+            "amount",
+            validators=[number_range(min=0, max=1_000_000)],
+        ),
+        IntegerField(
+            "quantity",
+            validators=[number_range(min=1, max=100)],
+        ),
+        DecimalField(
+            "unit_price",
+            validators=[number_range(min=0, max=10_000)],
+        ),
+        "date",
+    ]
     menu_label = "Expense lines"
     collapsed = True
 
@@ -670,7 +733,10 @@ class TaskInline(InlineModelView):
     fk_attr = "project_id"
     fields = [
         "id",
-        "title",
+        StringField(
+            "title",
+            validators=[length(max=200)],
+        ),
         TaskStatusBadgeField("status", enum=TaskStatus),
         TaskPriorityBadgeField("priority", enum=TaskPriority),
         "assignee",
@@ -689,23 +755,35 @@ class ProjectView(SoftDeleteModelView):
 
     fields = [
         "id",
-        "name",
+        StringField(
+            "name",
+            validators=[length(max=200)],
+        ),
         SlugField("slug", populate_from="name"),
-        "description",
+        TextAreaField(
+            "description",
+            validators=[length(max=2000)],
+        ),
         ProjectStatusBadgeField("status", enum=ProjectStatus),
         TaskPriorityBadgeField("priority", enum=TaskPriority),
         DollarField(
             "budget",
             help_text="Total budget allocated to the project, in USD.",
-            validators=[number_range(min=0, message="Budget cannot be negative.")],
+            validators=[number_range(min=0, max=1_000_000_000)],
         ),
         DollarField(
             "spent",
             help_text="Total amount spent on the project, in USD.",
-            validators=[number_range(min=0, message="Spent cannot be negative.")],
+            validators=[number_range(min=0, max=1_000_000_000)],
         ),
-        "estimated_hours",
-        "actual_hours",
+        DecimalField(
+            "estimated_hours",
+            validators=[number_range(min=0, max=9_999_999.9)],
+        ),
+        DecimalField(
+            "actual_hours",
+            validators=[number_range(min=0, max=9_999_999.9)],
+        ),
         ProgressField(
             "progress", help_text="Actual hours logged as a share of estimated hours."
         ),
@@ -866,14 +944,26 @@ class ProjectView(SoftDeleteModelView):
 class TaskView(ModelView):
     fields = [
         "id",
-        "title",
-        "description",
+        StringField(
+            "title",
+            validators=[length(max=200)],
+        ),
+        TextAreaField(
+            "description",
+            validators=[length(max=2000)],
+        ),
         "project",
         "assignee",
         TaskStatusBadgeField("status", enum=TaskStatus),
         TaskPriorityBadgeField("priority", enum=TaskPriority),
-        "estimated_hours",
-        "actual_hours",
+        DecimalField(
+            "estimated_hours",
+            validators=[number_range(min=0, max=99_999.9)],
+        ),
+        DecimalField(
+            "actual_hours",
+            validators=[number_range(min=0, max=99_999.9)],
+        ),
         "due_date",
         "completed_at",
         "labels",
@@ -936,18 +1026,28 @@ class TimesheetView(ModelView):
         "date",
         DecimalField(
             "hours",
-            validators=[number_gt(0, message="Hours must be greater than zero.")],
+            validators=[
+                number_gt(0),
+                number_range(max=999.9),
+            ],
         ),
         IntegerField(
             "minutes",
-            validators=[
-                number_range(min=0, max=59, message="Minutes must be between 0 and 59.")
-            ],
+            validators=[number_range(min=0, max=59)],
         ),
-        "description",
+        TextAreaField(
+            "description",
+            validators=[length(max=1000)],
+        ),
         "is_billable",
-        "hourly_rate",
-        "total_cost",
+        DecimalField(
+            "hourly_rate",
+            validators=[number_range(min=0, max=999_999.99)],
+        ),
+        DecimalField(
+            "total_cost",
+            validators=[number_range(min=0, max=99_999_999.99)],
+        ),
         "task",
         "project",
     ]
@@ -995,10 +1095,16 @@ class ExpenseView(ModelView):
         "id",
         "employee",
         "project",
-        "expense_number",
+        StringField(
+            "expense_number",
+            validators=[length(max=40)],
+        ),
         ExpenseStatusBadgeField("status", enum=ExpenseStatus),
         ExpenseCategoryBadgeField("category", enum=ExpenseCategory),
-        "description",
+        TextAreaField(
+            "description",
+            validators=[length(max=2000)],
+        ),
         DollarField(
             "total_amount",
             help_text="Sum of this expense's line items, in USD. Derived, not editable.",
@@ -1007,8 +1113,14 @@ class ExpenseView(ModelView):
         "submitted_at",
         "approved_at",
         "approved_by",
-        "receipt_path",
-        "notes",
+        StringField(
+            "receipt_path",
+            validators=[length(max=500)],
+        ),
+        TextAreaField(
+            "notes",
+            validators=[length(max=2000)],
+        ),
     ]
     exclude_fields_from_list = ["id", "description", "notes", "receipt_path"]
     exclude_fields_from_create = ["total_amount"]
