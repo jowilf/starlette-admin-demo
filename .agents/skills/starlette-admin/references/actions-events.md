@@ -5,7 +5,7 @@
 Operate on rows selected on the list page. `delete` is provided by default. Decorate a view method with `@action` and list its name in `actions`. Names must be unique per view.
 
 ```python
-from starlette_admin import action, flash
+from starlette_admin import ActionSelection, action, flash
 from starlette_admin.exceptions import ActionFailed
 
 
@@ -20,16 +20,26 @@ class ArticleView(ModelView):
         submit_btn_class="btn-success",
         form='<form><input type="text" class="form-control" name="note"></form>',
     )
-    async def make_published_action(self, request: Request, pks: list[Any]) -> None:
+    async def make_published_action(
+        self, request: Request, selection: ActionSelection
+    ) -> None:
         data = await request.form()                  # values from the optional form
-        for article in await self.find_by_pks(request, pks):
+        for article in await selection.rows():
             article.status = "published"
-        flash(request, f"{len(pks)} article(s) published.", "success")
+        flash(request, f"{await selection.count()} article(s) published.", "success")
 ```
 
-- Success feedback: call `flash()`. Returning a value is not how feedback works.
-- Failure: `raise ActionFailed("message")`; the UI shows it as an error banner. Do not also call `flash()` in that branch.
-- Custom response (redirect, file download): pass `custom_response=True` and return a `Response`.
+The handler always receives an `ActionSelection`, never a raw `pks` list. It covers both selection modes on the list page: rows checked one by one, or "select all matching" against the current filter/search.
+
+- `await selection.rows()` — the target objects, fetched once and cached.
+- `await selection.pks()` — just the primary keys, without loading full rows.
+- `await selection.count()` — how many rows are targeted. In select-all mode this runs a `count()` query and enforces `action_select_all_limit` (default 1000), raising `ActionFailed` if the current filter matches too many rows.
+- `selection.is_select_all`, `selection.filters`, `selection.q` — reason about *how* rows were selected, for example to push the operation down as one bulk query instead of materializing rows via `selection.rows()`.
+- `allow_empty_selection=True` on `@action` marks actions that operate on the whole collection rather than a selection, such as a full sync. They render in a separate, always-visible "Actions" dropdown and can run with zero rows selected. Without it, `handle_action` rejects an empty selection before the handler runs.
+
+Success feedback: call `flash()`. Returning a value is not how feedback works.
+Failure: `raise ActionFailed("message")`; the UI shows it as an error banner. Do not also call `flash()` in that branch.
+Custom response (redirect, file download): pass `custom_response=True` and return a `Response`.
 
 ## Row actions
 
@@ -78,9 +88,9 @@ from starlette_admin import flash  # also starlette_admin.flash.flash
 flash(request, "Report generated.", "success")   # categories: success, info, warning, error
 ```
 
-- Category defaults to `"info"`; anything else raises `ValueError`.
+- Category defaults to `"info"`; anything else raises `ValueError`. `message` must be a non-empty string.
 - Standard CRUD already flashes success messages automatically; do not duplicate them.
-- Stored in a signed httponly cookie (about 4 KB limit): keep messages short.
+- Stored in a signed httponly cookie (about 4 KB limit, keep messages short) that expires after 5 minutes. A message queued but not rendered within that window (for example a redirect chain that stalls) is silently dropped.
 - In custom templates, `get_flashed_messages(request)` pops the queue destructively (second call returns `[]`); the built-in layout renders them for you.
 
 ## Events (cross-view hooks)

@@ -15,6 +15,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 from starlette.requests import Request
 from starlette_admin import (
+    ActionSelection,
     CollectionField,
     ColorField,
     FieldRef,
@@ -303,9 +304,11 @@ class DepartmentView(ModelView):
         submit_btn_text="Yes, deactivate",
         submit_btn_class="btn-outline-danger",
     )
-    async def deactivate_action(self, request: Request, pks: list[Any]) -> None:
+    async def deactivate_action(
+        self, request: Request, selection: ActionSelection
+    ) -> None:
         session: Session = request.state.session
-        departments = await self.find_by_pks(request, pks)
+        departments = await selection.rows()
         for department in departments:
             department.is_active = False
             session.add(department)
@@ -656,8 +659,8 @@ class LeaveRequestView(ModelView):
         submit_btn_class="btn-success",
         icon_class="fa-solid fa-check",
     )
-    async def approve_action(self, request: Request, pks: list[Any]) -> None:
-        leave_requests = await self.find_by_pks(request, pks)
+    async def approve_action(self, request: Request, selection: ActionSelection) -> None:
+        leave_requests = await selection.rows()
         pending = [lr for lr in leave_requests if lr.status == LeaveStatus.PENDING]
         self._review(request, pending, LeaveStatus.APPROVED)
         flash(request, f"{len(pending)} leave request(s) were approved.", "success")
@@ -671,8 +674,8 @@ class LeaveRequestView(ModelView):
         submit_btn_class="btn-outline-danger",
         icon_class="fa-solid fa-xmark",
     )
-    async def reject_action(self, request: Request, pks: list[Any]) -> None:
-        leave_requests = await self.find_by_pks(request, pks)
+    async def reject_action(self, request: Request, selection: ActionSelection) -> None:
+        leave_requests = await selection.rows()
         pending = [lr for lr in leave_requests if lr.status == LeaveStatus.PENDING]
         self._review(request, pending, LeaveStatus.REJECTED)
         flash(request, f"{len(pending)} leave request(s) were rejected.", "success")
