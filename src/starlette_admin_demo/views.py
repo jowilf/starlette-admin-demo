@@ -100,6 +100,7 @@ class ModelView(BaseModelView):
     row_actions_position = RowActionsPosition.AFTER_COLUMNS
     show_goto_page = True
     search_auto_submit = True
+    action_select_all_limit = 30
     # Every format in starlette_admin's EXPORT_FORMATS registry (tablib[all] + reportlab
     # are project dependencies, so all of these are available).
     exporters = [
