@@ -71,6 +71,7 @@ from .filters import (
     DepartmentNotInFilter,
 )
 from .models import (
+    Department,
     Employee,
     EmploymentType,
     Expense,
@@ -80,6 +81,7 @@ from .models import (
     LeaveRequest,
     LeaveStatus,
     LeaveType,
+    Project,
     ProjectStatus,
     Task,
     TaskPriority,
@@ -207,7 +209,18 @@ class DepartmentView(ModelView):
             required=True,
             validators=[length(max=200)],
         ),
-        SlugField("slug", populate_from="name", required=True),
+        SlugField(
+            "slug",
+            populate_from="name",
+            required=True,
+            validators=[
+                unique(
+                    Department,
+                    Department.slug,
+                    message="A department with this slug already exists.",
+                )
+            ],
+        ),
         TextAreaField(
             "description",
             validators=[length(max=2000)],
@@ -794,7 +807,18 @@ class ProjectView(SoftDeleteModelView):
             required=True,
             validators=[length(max=200)],
         ),
-        SlugField("slug", populate_from="name", required=True),
+        SlugField(
+            "slug",
+            populate_from="name",
+            required=True,
+            validators=[
+                unique(
+                    Project,
+                    Project.slug,
+                    message="A project with this slug already exists.",
+                )
+            ],
+        ),
         TextAreaField(
             "description",
             validators=[length(max=2000)],
@@ -1135,7 +1159,14 @@ class ExpenseView(ModelView):
         StringField(
             "expense_number",
             required=True,
-            validators=[length(max=40)],
+            validators=[
+                length(max=40),
+                unique(
+                    Expense,
+                    Expense.expense_number,
+                    message="An expense with this number already exists.",
+                ),
+            ],
         ),
         ExpenseStatusBadgeField("status", enum=ExpenseStatus),
         ExpenseCategoryBadgeField("category", enum=ExpenseCategory, required=True),
