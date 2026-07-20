@@ -10,12 +10,13 @@ dependencies = [
     "markdown>=3.10.2",
     "pillow>=12.3.0",
     "sqlalchemy>=2.0.51",
-    "starlette-admin",
+    "starlette-admin[pdf]",
     "psycopg[binary,pool]>=3.3.4",
     "celery[redis]>=5.6.3",
     "redis>=6.4.0",
     "flower>=2.0.1",
     "sqlalchemy-searchable>=3.0.0",
+    "tablib[all]>=3.9.0",
 ]
 
 [project.scripts]
@@ -42,8 +43,12 @@ dev = "fastapi dev src/starlette_admin_demo/app.py"
 worker = "celery -A starlette_admin_demo.celery_app worker --loglevel=info"
 beat = "celery -A starlette_admin_demo.celery_app beat --loglevel=info"
 flower = "celery -A starlette_admin_demo.celery_app flower --port=5555"
-format.sequence = ["ruff format", "ruff check . --fix", "djlint templates --reformat --format-css --format-js" ]
+format.sequence = [
+    "ruff format",
+    "ruff check . --fix",
+    "djlint templates --reformat --format-css --format-js",
+]
 format.default_item_type = "cmd"
 
 [tool.uv.sources]
-starlette-admin = { git = "https://github.com/jowilf/starlette-admin-next.git", rev = "74102f5b1f4c72a6ae381a7adee1021d072a62d6" }
+starlette-admin = { git = "https://github.com/jowilf/starlette-admin-next.git", rev = "c311d4839df0449f20f76606926b1384386c1f86" }

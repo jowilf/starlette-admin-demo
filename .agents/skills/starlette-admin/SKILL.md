@@ -90,12 +90,13 @@ These are the mistakes that break real apps. Follow them without exception.
 8. **`PasswordField` only masks form input.** Values render as plain text on list and detail pages and are logged at DEBUG level. Set `exclude_from_list=True` and `exclude_from_detail=True` on it.
 9. **Storage-backed `FileField`/`ImageField` need a JSON-capable column.** The database stores `FileInfo` metadata only. Orphaned files are never cleaned up automatically; use sqlalchemy-file if uploads must be transactional. `ListField(FileField(...))` is unsupported, use `multiple=True`.
 10. **In actions, signal outcomes with `flash(request, msg, "success")` and `raise ActionFailed("msg")`,** not return values. Do not call `flash()` in an `ActionFailed` branch, the request does not redirect.
-11. **Always call `super()` for unhandled names** when overriding `is_action_allowed`, `is_row_action_allowed`, or `is_row_action_allowed_for_obj`. Skipping it silently disables the permission checks behind the built-in view/edit/delete actions.
-12. **`after_*_committed` hooks fire only on the SQLAlchemy backend** and run after the session is committed and closed. Never write through `request.state.session` inside them.
-13. **Multiple `Admin` instances on one app need distinct `base_url` and `route_name`,** otherwise generated links resolve to the wrong admin.
-14. **Import calls `create()` per row, never upsert.** Re-importing an export with primary keys duplicates rows or fails. The UI offers dry-run validation and a skip-PK option.
-15. **`form_layout` must reference each field at most once and only names present in `fields`;** violations raise `ValueError` at view construction. Fields omitted from the layout are appended at the bottom, never lost.
-16. **Inline saves submit only the edited field.** With `inline_editable_fields`, the view's `validate()` hook and the edit lifecycle hooks receive `data` containing just that field. Guard cross-field rules with `"name" in data` checks; direct indexing raises `KeyError`.
+11. **Batch action handlers receive an `ActionSelection`, never a `pks` list.** Call `await selection.rows()`, `.pks()`, or `.count()`; the selection may represent "select all matching" rather than materialized rows, so treating it as a list breaks under that mode.
+12. **Always call `super()` for unhandled names** when overriding `is_action_allowed`, `is_row_action_allowed`, or `is_row_action_allowed_for_obj`. Skipping it silently disables the permission checks behind the built-in view/edit/delete actions.
+13. **`after_*_committed` hooks fire only on the SQLAlchemy backend** and run after the session is committed and closed. Never write through `request.state.session` inside them.
+14. **Multiple `Admin` instances on one app need distinct `base_url` and `route_name`,** otherwise generated links resolve to the wrong admin.
+15. **Import creates per row unless upsert is on.** The wizard's "Update existing records by primary key" option calls `edit()` on PK matches; without it, re-importing an export with primary keys duplicates rows or fails. The preview step validates everything before writing; unchecking the PK column lets backends auto-generate keys.
+16. **`form_layout` must reference each field at most once and only names present in `fields`;** violations raise `ValueError` at view construction. Fields omitted from the layout are appended at the bottom, never lost.
+17. **Inline saves submit only the edited field.** With `inline_editable_fields`, the view's `validate()` hook and the edit lifecycle hooks receive `data` containing just that field. Guard cross-field rules with `"name" in data` checks; direct indexing raises `KeyError`.
 
 ## ModelView configuration cheat sheet
 
@@ -119,8 +120,8 @@ class PostView(ModelView):
     row_actions = ["view", "edit", "delete"]        # built-in row actions
     inline_editable_fields = ["title", "published"] # single-field edit popovers on the list page
     inlines = [CommentInline]                       # nested child forms
-    exporters = [CsvExporter(), ExcelExporter()]    # default: Csv + Json
-    importers = [CsvImporter()]                     # default: Csv + Json
+    exporters = ["csv", "xlsx"]                     # default: ["csv", "json"]
+    importers = ["csv"]                             # default: ["csv", "json"]
     form_layout = [("title", "author"), "content"]  # tuple = shared row
 
     # Permission hooks (all default to True): is_accessible, can_create, can_edit,
@@ -144,11 +145,11 @@ Registration accepts naming overrides: `admin.add_view(PostView(Post, key="blog-
 | Choices | `EnumField(enum= / choices= / choices_loader=, multiple=)`, `TimeZoneField`, `CountryField`, `CurrencyField` (i18n extra) |
 | Collections | `TagsField` (free strings), `ListField(inner_field)`, `CollectionField(fields=[...])` (nested object) |
 | JSON | `JSONField(validation_schema=...)` |
-| Derived read-only | `ComputedField(fn=...)` or subclass with `compute()` |
+| Derived read-only | `ComputedField(getter=...)` or subclass and override `parse_obj()` |
 | Files | `FileField`, `ImageField` (both take `storage=`, `upload_folder=`, `accept=`, `max_size=`, `multiple=`, `validators=`) |
 | Relations | `HasOne`, `HasMany` (auto-detected from ORM relationships) |
 
-Common attributes on every field: `label`, `help_text`, `required`, `disabled`, `read_only`, `default` (static, zero-arg callable, or `(request) -> value`), `validators`, `searchable`, `orderable`, `filters`, `exclude_from_*` flags, and `extra` (free metadata dict the framework never touches).
+Common attributes on every field: `label`, `help_text`, `required`, `disabled`, `read_only`, `default` (static, zero-arg callable, or `(request) -> value`), `getter` (`(request, obj) -> value`, overrides the default `getattr` lookup in `parse_obj`), `formatter` (`dict[RequestAction, (request, value) -> value]`, replaces `serialize_value`/`serialize_none_value` per action; its return value is used as-is), `parser` (`dict[RequestAction, (request, raw) -> value]`, replaces the field's default form/import parsing per action), `validators`, `searchable`, `orderable`, `filters`, `exclude_from_*` flags, and `extra` (free metadata dict the framework never touches).
 
 Server-side validation: pass `validators=[...]` on any field. A validator is a sync or async callable `(request, field, value)` that raises `ValueError` to reject the value. Built-in factories live in `starlette_admin.validators`: `length`, `number_range`, `regexp`, `email`, `url`, `uuid`, `ip_address`, `any_of`, `none_of`, `file_size`, `file_type`, `valid_image`. Empty values are only checked against `required`; cross-field rules go in the view's `validate()` override. Details in [references/fields.md](references/fields.md).
 

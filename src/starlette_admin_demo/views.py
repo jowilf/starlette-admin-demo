@@ -98,6 +98,25 @@ class ModelView(BaseModelView):
     row_actions_position = RowActionsPosition.AFTER_COLUMNS
     show_goto_page = True
     search_auto_submit = True
+    # Every format in starlette_admin's EXPORT_FORMATS registry (tablib[all] + reportlab
+    # are project dependencies, so all of these are available).
+    exporters = [
+        "csv",
+        "tsv",
+        "json",
+        "yaml",
+        "xlsx",
+        "xls",
+        "ods",
+        "dbf",
+        "html",
+        "latex",
+        "jira",
+        "rst",
+        "pdf",
+    ]
+    # Every format in starlette_admin's IMPORT_FORMATS registry.
+    importers = ["csv", "tsv", "json", "yaml", "xlsx", "xls", "ods", "dbf", "html"]
 
     def get_search_query(self, request: Request, term: str) -> Any:
         # Replaces the library's per-column ILIKE scan with the model's GIN-indexed `search_vector` (models.py / search.py).
@@ -659,7 +678,9 @@ class LeaveRequestView(ModelView):
         submit_btn_class="btn-success",
         icon_class="fa-solid fa-check",
     )
-    async def approve_action(self, request: Request, selection: ActionSelection) -> None:
+    async def approve_action(
+        self, request: Request, selection: ActionSelection
+    ) -> None:
         leave_requests = await selection.rows()
         pending = [lr for lr in leave_requests if lr.status == LeaveStatus.PENDING]
         self._review(request, pending, LeaveStatus.APPROVED)
