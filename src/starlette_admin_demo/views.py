@@ -204,9 +204,10 @@ class DepartmentView(ModelView):
         "id",
         StringField(
             "name",
+            required=True,
             validators=[length(max=200)],
         ),
-        SlugField("slug", populate_from="name"),
+        SlugField("slug", populate_from="name", required=True),
         TextAreaField(
             "description",
             validators=[length(max=2000)],
@@ -366,10 +367,12 @@ class EmployeeView(SoftDeleteModelView):
         ),
         AvatarNameField(
             avatars_storage=avatars_storage,
+            required=True,
             validators=[length(max=200)],
         ),
         EmailField(
             "email",
+            required=True,
             validators=[
                 email(),
                 length(max=200),
@@ -387,6 +390,7 @@ class EmployeeView(SoftDeleteModelView):
         "date_of_birth",
         StringField(
             "job_title",
+            required=True,
             validators=[length(max=200)],
         ),
         EmploymentTypeBadgeField("employment_type", enum=EmploymentType),
@@ -536,7 +540,7 @@ class EmployeeView(SoftDeleteModelView):
 class LeaveRequestView(ModelView):
     fields = [
         "id",
-        "employee",
+        HasOne("employee", key="employee", required=True),
         "approver",
         LeaveTypeBadgeField("type", enum=LeaveType),
         LeaveStatusBadgeField("status", enum=LeaveStatus),
@@ -546,6 +550,7 @@ class LeaveRequestView(ModelView):
         "end_time",
         DecimalField(
             "days_requested",
+            required=True,
             validators=[
                 number_gt(0),
                 number_range(max=999.9),
@@ -553,6 +558,7 @@ class LeaveRequestView(ModelView):
         ),
         TextAreaField(
             "reason",
+            required=True,
             validators=[length(max=2000)],
         ),
         TextAreaField(
@@ -732,10 +738,12 @@ class ExpenseLineInline(InlineModelView):
         "id",
         StringField(
             "description",
+            required=True,
             validators=[length(max=300)],
         ),
         DecimalField(
             "amount",
+            required=True,
             validators=[number_range(min=0, max=1_000_000)],
         ),
         IntegerField(
@@ -744,6 +752,7 @@ class ExpenseLineInline(InlineModelView):
         ),
         DecimalField(
             "unit_price",
+            required=True,
             validators=[number_range(min=0, max=10_000)],
         ),
         "date",
@@ -759,6 +768,7 @@ class TaskInline(InlineModelView):
         "id",
         StringField(
             "title",
+            required=True,
             validators=[length(max=200)],
         ),
         TaskStatusBadgeField("status", enum=TaskStatus),
@@ -781,9 +791,10 @@ class ProjectView(SoftDeleteModelView):
         "id",
         StringField(
             "name",
+            required=True,
             validators=[length(max=200)],
         ),
-        SlugField("slug", populate_from="name"),
+        SlugField("slug", populate_from="name", required=True),
         TextAreaField(
             "description",
             validators=[length(max=2000)],
@@ -970,13 +981,14 @@ class TaskView(ModelView):
         "id",
         StringField(
             "title",
+            required=True,
             validators=[length(max=200)],
         ),
         TextAreaField(
             "description",
             validators=[length(max=2000)],
         ),
-        "project",
+        HasOne("project", key="project", required=True),
         "assignee",
         TaskStatusBadgeField("status", enum=TaskStatus),
         TaskPriorityBadgeField("priority", enum=TaskPriority),
@@ -1046,10 +1058,11 @@ class TaskView(ModelView):
 class TimesheetView(ModelView):
     fields = [
         "id",
-        "employee",
+        HasOne("employee", key="employee", required=True),
         "date",
         DecimalField(
             "hours",
+            required=True,
             validators=[
                 number_gt(0),
                 number_range(max=999.9),
@@ -1073,7 +1086,7 @@ class TimesheetView(ModelView):
             validators=[number_range(min=0, max=99_999_999.99)],
         ),
         "task",
-        "project",
+        HasOne("project", key="project", required=True),
     ]
     exclude_fields_from_list = ["id", "project"]
     fields_default_sort = [("date", True)]
@@ -1117,16 +1130,18 @@ class TimesheetView(ModelView):
 class ExpenseView(ModelView):
     fields = [
         "id",
-        "employee",
+        HasOne("employee", key="employee", required=True),
         "project",
         StringField(
             "expense_number",
+            required=True,
             validators=[length(max=40)],
         ),
         ExpenseStatusBadgeField("status", enum=ExpenseStatus),
-        ExpenseCategoryBadgeField("category", enum=ExpenseCategory),
+        ExpenseCategoryBadgeField("category", enum=ExpenseCategory, required=True),
         TextAreaField(
             "description",
+            required=True,
             validators=[length(max=2000)],
         ),
         DollarField(
