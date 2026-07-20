@@ -1796,7 +1796,7 @@ wheels = [
 [[package]]
 name = "starlette-admin"
 version = "0.16.0"
-source = { git = "https://github.com/jowilf/starlette-admin-next.git?rev=c311d4839df0449f20f76606926b1384386c1f86#c311d4839df0449f20f76606926b1384386c1f86" }
+source = { git = "https://github.com/jowilf/starlette-admin-next.git?rev=927ff16975652479ab0531147720624d474c5eb0#927ff16975652479ab0531147720624d474c5eb0" }
 dependencies = [
     { name = "itsdangerous" },
     { name = "jinja2" },
@@ -1848,7 +1848,7 @@ requires-dist = [
     { name = "redis", specifier = ">=6.4.0" },
     { name = "sqlalchemy", specifier = ">=2.0.51" },
     { name = "sqlalchemy-searchable", specifier = ">=3.0.0" },
-    { name = "starlette-admin", extras = ["pdf"], git = "https://github.com/jowilf/starlette-admin-next.git?rev=c311d4839df0449f20f76606926b1384386c1f86" },
+    { name = "starlette-admin", extras = ["pdf"], git = "https://github.com/jowilf/starlette-admin-next.git?rev=927ff16975652479ab0531147720624d474c5eb0" },
     { name = "tablib", extras = ["all"], specifier = ">=3.9.0" },
 ]
 

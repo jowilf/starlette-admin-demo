@@ -46,7 +46,7 @@ from starlette_admin.fields import (
     TextAreaField,
 )
 from starlette_admin.helpers import on_commit
-from starlette_admin.validators import email, length, number_gt, number_range
+from starlette_admin.validators import email, length, number_gt, number_range, slug
 
 from .audit import log_action
 from .cache import trigger_dashboard_refresh
@@ -214,11 +214,12 @@ class DepartmentView(ModelView):
             populate_from="name",
             required=True,
             validators=[
+                slug(),
                 unique(
                     Department,
                     Department.slug,
                     message="A department with this slug already exists.",
-                )
+                ),
             ],
         ),
         TextAreaField(
@@ -812,11 +813,12 @@ class ProjectView(SoftDeleteModelView):
             populate_from="name",
             required=True,
             validators=[
+                slug(),
                 unique(
                     Project,
                     Project.slug,
                     message="A project with this slug already exists.",
-                )
+                ),
             ],
         ),
         TextAreaField(
