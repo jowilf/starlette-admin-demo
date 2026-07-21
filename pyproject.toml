@@ -51,4 +51,4 @@ format.sequence = [
 format.default_item_type = "cmd"
 
 [tool.uv.sources]
-starlette-admin = { git = "https://github.com/jowilf/starlette-admin-next.git", rev = "927ff16975652479ab0531147720624d474c5eb0" }
+starlette-admin = { git = "https://github.com/jowilf/starlette-admin-next.git", rev = "4e39a8bf4bf6e8a36d14df321dbfc17e43e85097" }
