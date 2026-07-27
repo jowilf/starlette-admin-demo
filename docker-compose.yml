@@ -3,8 +3,6 @@ services:
     container_name: starlette_admin_demo
     build:
       context: .
-      secrets:
-        - github_token
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -21,10 +19,10 @@ services:
     container_name: celery_worker
     build:
       context: .
-      secrets:
-        - github_token
     restart: unless-stopped
     command: ["celery", "-A", "starlette_admin_demo.celery_app", "worker", "--loglevel=info"]
+    healthcheck:
+      disable: true
     environment:
       ENGINE: postgresql+psycopg://demo:demo@postgres:5432/demo
       REDIS_URL: redis://redis:6379/0
@@ -38,10 +36,10 @@ services:
     container_name: celery_beat
     build:
       context: .
-      secrets:
-        - github_token
     restart: unless-stopped
     command: ["celery", "-A", "starlette_admin_demo.celery_app", "beat", "--loglevel=info"]
+    healthcheck:
+      disable: true
     environment:
       ENGINE: postgresql+psycopg://demo:demo@postgres:5432/demo
       REDIS_URL: redis://redis:6379/0
@@ -55,10 +53,10 @@ services:
     container_name: celery_flower
     build:
       context: .
-      secrets:
-        - github_token
     restart: unless-stopped
     command: ["celery", "-A", "starlette_admin_demo.celery_app", "flower", "--port=5555"]
+    healthcheck:
+      disable: true
     ports:
       - "5555:5555"
     environment:
@@ -118,7 +116,3 @@ services:
 volumes:
   postgres_data:
   redis_data:
-
-secrets:
-  github_token:
-    environment: GITHUB_TOKEN

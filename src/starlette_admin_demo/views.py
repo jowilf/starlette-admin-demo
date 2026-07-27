@@ -298,8 +298,8 @@ class DepartmentView(ModelView):
         confirmation="Set this department's new budget.",
         icon_class="fa-solid fa-sack-dollar",
         submit_btn_text="Apply",
-        submit_btn_class="btn-success",
-        action_btn_class="btn-info",
+        submit_btn_class="btn btn-success",
+        action_btn_class="btn btn-info",
         form=_build_adjust_budget_form,
     )
     async def adjust_budget_row_action(self, request: Request, pk: Any) -> None:
@@ -337,7 +337,7 @@ class DepartmentView(ModelView):
         text="Deactivate selected departments",
         confirmation="Are you sure you want to deactivate the selected departments?",
         submit_btn_text="Yes, deactivate",
-        submit_btn_class="btn-outline-danger",
+        submit_btn_class="btn btn-outline-danger",
     )
     async def deactivate_action(
         self, request: Request, selection: ActionSelection
@@ -660,8 +660,8 @@ class LeaveRequestView(ModelView):
         confirmation="Approve this leave request?",
         icon_class="fa-solid fa-check",
         submit_btn_text="Yes, approve",
-        submit_btn_class="btn-success",
-        action_btn_class="btn-success",
+        submit_btn_class="btn btn-success",
+        action_btn_class="btn btn-success",
     )
     async def approve_row_action(self, request: Request, pk: Any) -> None:
         leave_request = await self.find_by_pk(request, pk)
@@ -678,8 +678,8 @@ class LeaveRequestView(ModelView):
         confirmation="Reject this leave request?",
         icon_class="fa-solid fa-xmark",
         submit_btn_text="Yes, reject",
-        submit_btn_class="btn-danger",
-        action_btn_class="btn-danger",
+        submit_btn_class="btn btn-danger",
+        action_btn_class="btn btn-danger",
     )
     async def reject_row_action(self, request: Request, pk: Any) -> None:
         leave_request = await self.find_by_pk(request, pk)
@@ -696,7 +696,7 @@ class LeaveRequestView(ModelView):
         confirmation="Approve the selected leave requests? Requests that "
         "aren't pending are left untouched.",
         submit_btn_text="Yes, approve",
-        submit_btn_class="btn-success",
+        submit_btn_class="btn btn-success",
         icon_class="fa-solid fa-check",
     )
     async def approve_action(

@@ -1795,13 +1795,17 @@ wheels = [
 
 [[package]]
 name = "starlette-admin"
-version = "0.16.0"
-source = { git = "https://github.com/jowilf/starlette-admin-next.git?rev=4e39a8bf4bf6e8a36d14df321dbfc17e43e85097#4e39a8bf4bf6e8a36d14df321dbfc17e43e85097" }
+version = "1.0.0rc2"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "itsdangerous" },
     { name = "jinja2" },
     { name = "python-multipart" },
     { name = "starlette" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fd/5c/03bfbf277d5441fc0690a83ec061cb17bb8f7aeae08cd7da30986f51fc1d/starlette_admin-1.0.0rc2.tar.gz", hash = "sha256:46371172eca728fa179a559f8e52f4b41708656bda629f41023ca41b0cc13b2a", size = 1188254, upload-time = "2026-07-27T02:26:09.562Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a4/d7/67e97b319d2bf88968ad7bd0ab9e37cccb2157b4aca004b0b74cfe8de810/starlette_admin-1.0.0rc2-py3-none-any.whl", hash = "sha256:6b217898ab60cb86e5610804fe1b4abefca3f6c6621ae536254d2e1ec5614286", size = 1313306, upload-time = "2026-07-27T02:26:07.668Z" },
 ]
 
 [package.optional-dependencies]
@@ -1848,7 +1852,7 @@ requires-dist = [
     { name = "redis", specifier = ">=6.4.0" },
     { name = "sqlalchemy", specifier = ">=2.0.51" },
     { name = "sqlalchemy-searchable", specifier = ">=3.0.0" },
-    { name = "starlette-admin", extras = ["pdf"], git = "https://github.com/jowilf/starlette-admin-next.git?rev=4e39a8bf4bf6e8a36d14df321dbfc17e43e85097" },
+    { name = "starlette-admin", extras = ["pdf"], specifier = "==1.0.0rc2" },
     { name = "tablib", extras = ["all"], specifier = ">=3.9.0" },
 ]
 

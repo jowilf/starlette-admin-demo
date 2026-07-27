@@ -10,7 +10,7 @@ dependencies = [
     "markdown>=3.10.2",
     "pillow>=12.3.0",
     "sqlalchemy>=2.0.51",
-    "starlette-admin[pdf]",
+    "starlette-admin[pdf]==1.0.0rc2",
     "psycopg[binary,pool]>=3.3.4",
     "celery[redis]>=5.6.3",
     "redis>=6.4.0",
@@ -49,6 +49,3 @@ format.sequence = [
     "djlint templates --reformat --format-css --format-js",
 ]
 format.default_item_type = "cmd"
-
-[tool.uv.sources]
-starlette-admin = { git = "https://github.com/jowilf/starlette-admin-next.git", rev = "4e39a8bf4bf6e8a36d14df321dbfc17e43e85097" }

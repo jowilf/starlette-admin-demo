@@ -6,10 +6,16 @@
 .pre-commit-config.yaml
 .claude
 .agents
+.vscode
 .DS_Store
-__pycache__
-*.pyc
+**/.DS_Store
+# Bare `__pycache__` / `*.pyc` only match the context root, so stale bytecode under
+# src/ would otherwise ship in the image.
+**/__pycache__/
+**/*.py[cod]
 Dockerfile
-docker-compose.yml
-demo.db
-uploads
+.dockerignore
+docker-compose*.yml
+**/*.db
+uploads/
+src/uploads/
