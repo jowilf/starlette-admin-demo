@@ -2,17 +2,17 @@
 {% block head %}
     <link rel="apple-touch-icon"
           sizes="180x180"
-          href="{{ static_url(request, 'favicon/apple-touch-icon.png') }}">
+          href="{{ static_url(request, 'favicon/apple-touch-icon.png', v=1) }}">
     <link rel="icon"
           type="image/png"
           sizes="32x32"
-          href="{{ static_url(request, 'favicon/favicon-32x32.png') }}">
+          href="{{ static_url(request, 'favicon/favicon-32x32.png', v=1) }}">
     <link rel="icon"
           type="image/png"
           sizes="16x16"
-          href="{{ static_url(request, 'favicon/favicon-16x16.png') }}">
+          href="{{ static_url(request, 'favicon/favicon-16x16.png', v=1) }}">
     <link rel="manifest"
-          href="{{ static_url(request, 'favicon/site.webmanifest') }}">
+          href="{{ static_url(request, 'favicon/site.webmanifest', v=1) }}">
     {{ super() }}
     {# Umami page-view analytics: only injected once UMAMI_HOST / UMAMI_WEBSITE_ID are configured, see config.py #}
     {% if umami_host and umami_website_id %}
