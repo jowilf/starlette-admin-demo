@@ -57,6 +57,15 @@ wheels = [
 ]
 
 [[package]]
+name = "babel"
+version = "2.18.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/b2/51899539b6ceeeb420d40ed3cd4b7a40519404f9baf3d4ac99dc413a834b/babel-2.18.0.tar.gz", hash = "sha256:b80b99a14bd085fcacfa15c9165f651fbb3406e66cc603abf11c5750937c992d", size = 9959554, upload-time = "2026-02-01T12:30:56.078Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/77/f5/21d2de20e8b8b0408f0681956ca2c69f1320a3848ac50e6e7f39c6159675/babel-2.18.0-py3-none-any.whl", hash = "sha256:e2b422b277c2b9a9630c1d7903c2a00d0830c409c59ac8cae9081c92f1aeba35", size = 10196845, upload-time = "2026-02-01T12:30:53.445Z" },
+]
+
+[[package]]
 name = "billiard"
 version = "4.2.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1795,7 +1804,7 @@ wheels = [
 
 [[package]]
 name = "starlette-admin"
-version = "1.0.0rc2"
+version = "1.0.0rc3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "itsdangerous" },
@@ -1803,12 +1812,15 @@ dependencies = [
     { name = "python-multipart" },
     { name = "starlette" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fd/5c/03bfbf277d5441fc0690a83ec061cb17bb8f7aeae08cd7da30986f51fc1d/starlette_admin-1.0.0rc2.tar.gz", hash = "sha256:46371172eca728fa179a559f8e52f4b41708656bda629f41023ca41b0cc13b2a", size = 1188254, upload-time = "2026-07-27T02:26:09.562Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6f/ce/b8a02672fc9659d556155be99b90eeb4255763158dd791c55b65dc07ff94/starlette_admin-1.0.0rc3.tar.gz", hash = "sha256:3b641a8d6a6b2f27fff45d1887e0c01ae922ba5482c0111b8c3cae5d20ea72bf", size = 1230662, upload-time = "2026-07-29T02:40:01.561Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a4/d7/67e97b319d2bf88968ad7bd0ab9e37cccb2157b4aca004b0b74cfe8de810/starlette_admin-1.0.0rc2-py3-none-any.whl", hash = "sha256:6b217898ab60cb86e5610804fe1b4abefca3f6c6621ae536254d2e1ec5614286", size = 1313306, upload-time = "2026-07-27T02:26:07.668Z" },
+    { url = "https://files.pythonhosted.org/packages/d0/d5/47f0474d6fc0d2fb961e337ca5d8cd3988b536abf00f599104987a72c7f0/starlette_admin-1.0.0rc3-py3-none-any.whl", hash = "sha256:dc2f8353654939fdec18a67b6de6e426df1b563c366e5768055cfb5dc57114a8", size = 1350338, upload-time = "2026-07-29T02:39:59.803Z" },
 ]
 
 [package.optional-dependencies]
+i18n = [
+    { name = "babel" },
+]
 pdf = [
     { name = "reportlab" },
 ]
@@ -1828,7 +1840,7 @@ dependencies = [
     { name = "redis" },
     { name = "sqlalchemy" },
     { name = "sqlalchemy-searchable" },
-    { name = "starlette-admin", extra = ["pdf"] },
+    { name = "starlette-admin", extra = ["i18n", "pdf"] },
     { name = "tablib", extra = ["all"] },
 ]
 
@@ -1852,7 +1864,7 @@ requires-dist = [
     { name = "redis", specifier = ">=6.4.0" },
     { name = "sqlalchemy", specifier = ">=2.0.51" },
     { name = "sqlalchemy-searchable", specifier = ">=3.0.0" },
-    { name = "starlette-admin", extras = ["pdf"], specifier = "==1.0.0rc2" },
+    { name = "starlette-admin", extras = ["i18n", "pdf"], specifier = "==1.0.0rc3" },
     { name = "tablib", extras = ["all"], specifier = ">=3.9.0" },
 ]
 

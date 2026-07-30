@@ -10,7 +10,7 @@ dependencies = [
     "markdown>=3.10.2",
     "pillow>=12.3.0",
     "sqlalchemy>=2.0.51",
-    "starlette-admin[pdf]==1.0.0rc2",
+    "starlette-admin[i18n,pdf]==1.0.0rc3",
     "psycopg[binary,pool]>=3.3.4",
     "celery[redis]>=5.6.3",
     "redis>=6.4.0",

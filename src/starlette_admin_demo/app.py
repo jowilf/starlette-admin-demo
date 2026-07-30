@@ -10,6 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette_admin import DropDown
 from starlette_admin.contrib.sqla import Admin
 from starlette_admin.export import ExportConfig
+from starlette_admin.i18n import SUPPORTED_LOCALES, I18nConfig, TimezoneConfig
 from starlette_admin.importers import ImportConfig
 from starlette_admin.logging import configure_logging
 
@@ -69,6 +70,21 @@ admin = Admin(
     # Deliberately strict, low limits so the "capacity exceeded" errors are easy to demo.
     import_config=ImportConfig(max_upload_size=20 * 1024, max_rows=10),
     export_config=ExportConfig(max_rows=10),
+    i18n_config=I18nConfig(language_switcher=SUPPORTED_LOCALES),
+    timezone_config=TimezoneConfig(
+        timezone_switcher=[
+            "UTC",
+            "Europe/Paris",
+            "Europe/Berlin",
+            "Europe/London",
+            "Africa/Porto-Novo",
+            "America/New_York",
+            "America/Los_Angeles",
+            "Asia/Tokyo",
+            "Asia/Shanghai",
+            "Australia/Sydney",
+        ],
+    ),
 )
 
 # Consumed by templates/base.html to inject the Umami tracking script.
