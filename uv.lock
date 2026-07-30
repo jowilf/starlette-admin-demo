@@ -1804,7 +1804,7 @@ wheels = [
 
 [[package]]
 name = "starlette-admin"
-version = "1.0.0rc3"
+version = "1.0.0rc4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "itsdangerous" },
@@ -1812,9 +1812,9 @@ dependencies = [
     { name = "python-multipart" },
     { name = "starlette" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6f/ce/b8a02672fc9659d556155be99b90eeb4255763158dd791c55b65dc07ff94/starlette_admin-1.0.0rc3.tar.gz", hash = "sha256:3b641a8d6a6b2f27fff45d1887e0c01ae922ba5482c0111b8c3cae5d20ea72bf", size = 1230662, upload-time = "2026-07-29T02:40:01.561Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b9/4d/7daef7ff88684dc09fbaee0b013bcdfa4d07fdcff15a502138a54744fb4e/starlette_admin-1.0.0rc4.tar.gz", hash = "sha256:59fbf97a462880ba4fd2c9b68cc7286da5750558aa324df2e0ce256ea54dc104", size = 1231486, upload-time = "2026-07-30T07:49:39.604Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d0/d5/47f0474d6fc0d2fb961e337ca5d8cd3988b536abf00f599104987a72c7f0/starlette_admin-1.0.0rc3-py3-none-any.whl", hash = "sha256:dc2f8353654939fdec18a67b6de6e426df1b563c366e5768055cfb5dc57114a8", size = 1350338, upload-time = "2026-07-29T02:39:59.803Z" },
+    { url = "https://files.pythonhosted.org/packages/86/0b/ed48029eb4ecacfbddeebef0a82f5002ff5024571c5b9802fe5331a3c136/starlette_admin-1.0.0rc4-py3-none-any.whl", hash = "sha256:a9620eabf6883a0afd45add318b0e01054d88770ec489856c30648b7577e4585", size = 1351409, upload-time = "2026-07-30T07:49:38.199Z" },
 ]
 
 [package.optional-dependencies]
@@ -1864,7 +1864,7 @@ requires-dist = [
     { name = "redis", specifier = ">=6.4.0" },
     { name = "sqlalchemy", specifier = ">=2.0.51" },
     { name = "sqlalchemy-searchable", specifier = ">=3.0.0" },
-    { name = "starlette-admin", extras = ["i18n", "pdf"], specifier = "==1.0.0rc3" },
+    { name = "starlette-admin", extras = ["i18n", "pdf"], specifier = "==1.0.0rc4" },
     { name = "tablib", extras = ["all"], specifier = ">=3.9.0" },
 ]
 
