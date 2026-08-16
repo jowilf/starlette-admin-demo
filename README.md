@@ -42,13 +42,13 @@ uv sync
 ### 5. Create mock data:
 
 ```shell
-uv run seed.py
+uv run seed
 ```
 
 ### 6. Run the application:
 
 ```shell
-uv run -- uvicorn app.main:app --reload
+uv run -- fastapi dev src/starlette_admin_demo/app.py
 ```
 
 Then access the application in your browser at the given URL (<https://localhost:8000> by default).

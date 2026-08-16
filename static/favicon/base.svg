@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+    width="68"
+    height="68"
+    viewBox="0 0 68 68"
+    fill="none">
+
+    <defs>
+        <mask id="favicon-cutout">
+            <!-- Visible squircle -->
+            <rect
+                width="68"
+                height="68"
+                rx="18"
+                fill="white" />
+
+            <!-- Transparent icon cutout -->
+            <circle
+                cx="34"
+                cy="24"
+                r="8"
+                fill="black" />
+
+            <path
+                d="M18 53
+                   C18 43 24.5 37 34 37
+                   C43.5 37 50 43 50 53"
+                stroke="black"
+                stroke-width="7"
+                stroke-linecap="round" />
+        </mask>
+    </defs>
+
+    <!-- Squircle -->
+    <rect
+        width="68"
+        height="68"
+        rx="18"
+        fill="#066fd1"
+        mask="url(#favicon-cutout)" />
+
+</svg>

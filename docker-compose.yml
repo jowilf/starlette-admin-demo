@@ -1,16 +1,118 @@
 services:
   starlette_admin_demo:
     container_name: starlette_admin_demo
-    build: .
-    restart: always
-#    ports:
-#      - "8000:8000"
+    build:
+      context: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
     environment:
-      MONGO_HOST: mongodb://mongo:27017/
-      MONGO_URI: mongodb://mongo:27017/starlette_admin_demo
-      MONGO_DB: starlette_admin_demo
-      UPLOAD_DIR: assets/
-      ENGINE: sqlite:///demo.db?check_same_thread=false
-  mongo:
-    image: mongo
-    restart: always
+      ENGINE: postgresql+psycopg://demo:demo@postgres:5432/demo
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-worker:
+    container_name: celery_worker
+    build:
+      context: .
+    restart: unless-stopped
+    command: ["celery", "-A", "starlette_admin_demo.celery_app", "worker", "--loglevel=info"]
+    healthcheck:
+      disable: true
+    environment:
+      ENGINE: postgresql+psycopg://demo:demo@postgres:5432/demo
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-beat:
+    container_name: celery_beat
+    build:
+      context: .
+    restart: unless-stopped
+    command: ["celery", "-A", "starlette_admin_demo.celery_app", "beat", "--loglevel=info"]
+    healthcheck:
+      disable: true
+    environment:
+      ENGINE: postgresql+psycopg://demo:demo@postgres:5432/demo
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-flower:
+    container_name: celery_flower
+    build:
+      context: .
+    restart: unless-stopped
+    command: ["celery", "-A", "starlette_admin_demo.celery_app", "flower", "--port=5555"]
+    healthcheck:
+      disable: true
+    ports:
+      - "5555:5555"
+    environment:
+      ENGINE: postgresql+psycopg://demo:demo@postgres:5432/demo
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    container_name: postgres
+    image: postgres:17-alpine
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: demo
+      POSTGRES_DB: demo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo -d demo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    container_name: redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  adminer:
+    container_name: adminer
+    image: adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DEFAULT_DRIVER: pgsql
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:

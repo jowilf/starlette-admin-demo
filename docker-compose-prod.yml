@@ -1,0 +1,120 @@
+services:
+  starlette_admin_demo:
+    container_name: starlette_admin_demo
+    build:
+      context: .
+    restart: always
+    environment:
+      WORKERS: ${WORKERS:?WORKERS must be set}
+      UPLOAD_DIR: uploads/
+      ENGINE: postgresql+psycopg://demo:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/demo
+      APP_ENV: PROD
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
+      UMAMI_HOST: ${UMAMI_HOST:-}
+      UMAMI_WEBSITE_ID: ${UMAMI_WEBSITE_ID:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-worker:
+    container_name: celery_worker
+    build:
+      context: .
+    restart: always
+    command: ["celery", "-A", "starlette_admin_demo.celery_app", "worker", "--loglevel=info"]
+    healthcheck:
+      disable: true
+    environment:
+      ENGINE: postgresql+psycopg://demo:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/demo
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-beat:
+    container_name: celery_beat
+    build:
+      context: .
+    restart: always
+    command: ["celery", "-A", "starlette_admin_demo.celery_app", "beat", "--loglevel=info"]
+    healthcheck:
+      disable: true
+    environment:
+      ENGINE: postgresql+psycopg://demo:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/demo
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    container_name: postgres
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: demo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - type: bind
+        source: ./db-init/umami-init.sql
+        target: /docker-entrypoint-initdb.d/umami-init.sql
+        content: |
+          CREATE DATABASE umami OWNER demo;
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo -d demo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    container_name: redis
+    image: redis:7-alpine
+    restart: always
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "--no-auth-warning", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  adminer:
+    container_name: adminer
+    image: adminer
+    restart: always
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DEFAULT_DRIVER: pgsql
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  umami:
+    container_name: umami
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://demo:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/umami
+      DATABASE_TYPE: postgresql
+      APP_SECRET: ${UMAMI_APP_SECRET:?UMAMI_APP_SECRET must be set}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/heartbeat || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,21 @@
+.git
+.github
+.gitignore
+.venv
+.ruff_cache
+.pre-commit-config.yaml
+.claude
+.agents
+.vscode
+.DS_Store
+**/.DS_Store
+# Bare `__pycache__` / `*.pyc` only match the context root, so stale bytecode under
+# src/ would otherwise ship in the image.
+**/__pycache__/
+**/*.py[cod]
+Dockerfile
+.dockerignore
+docker-compose*.yml
+**/*.db
+uploads/
+src/uploads/

@@ -3,65 +3,49 @@ name = "starlette-admin-demo"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.115.12", # to use
-    "fasteners>=0.19",
-    "gunicorn>=23.0.0",
-    "itsdangerous>=2.2.0",
-    "markdown>=3.8",
-    "mongoengine>=0.29.1",
-    "odmantic>=1.0.2",
-    "pillow>=11.2.1",
-    "pydantic-settings>=2.9.1",
-    "pydantic[email]>=2.11.4",
-    "sqlalchemy-file>=0.6.0",
-    "sqlmodel>=0.0.24",
-    "starlette-admin[i18n]==0.17.0",
-    "uvicorn-worker>=0.3.0",
+    "faker>=40.28.1",
+    "fastapi[standard]>=0.139.0",
+    "markdown>=3.10.2",
+    "pillow>=12.3.0",
+    "sqlalchemy>=2.0.51",
+    "starlette-admin[i18n,pdf]==1.0.0",
+    "psycopg[binary,pool]>=3.3.4",
+    "celery[redis]>=5.6.3",
+    "redis>=6.4.0",
+    "flower>=2.0.1",
+    "sqlalchemy-searchable>=3.0.0",
+    "tablib[all]>=3.9.1",
 ]
 
-[tool.uv]
-dev-dependencies = [
-    "poethepoet>=0.34.0",
-    "pre-commit>=4.0.1",
-    "ruff>=0.7.1",
-    "uvicorn>=0.34.2",
+[project.scripts]
+seed = "starlette_admin_demo.seed:main"
+seed-api = "starlette_admin_demo.seed_api:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "djlint>=1.40.8",
+    "poethepoet>=0.48.0",
+    "pre-commit>=4.6.0",
+    "ruff>=0.15.21",
 ]
 
-[tool.ruff]
-target-version = "py312"
-line-length = 120
-lint.select = [
-    "A",
-    "B",
-    "C",
-    "DTZ",
-    "E",
-    "EM",
-    "F",
-    "I",
-    "ICN",
-    "ISC",
-    "N",
-    "PLC",
-    "PLE",
-    "PLW",
-    "Q",
-    "RUF",
-    "S",
-    "T",
-    "TID",
-    "UP",
-    "W",
-    "YTT",
-]
-lint.ignore = ["RUF012", "EM101", "N805", "ISC001"]
-
+[tool.djlint]
+profile = "jinja"
 
 [tool.poe.tasks]
-format.sequence = ["ruff format", "ruff check . --fix"]
+dev = "fastapi dev src/starlette_admin_demo/app.py"
+worker = "celery -A starlette_admin_demo.celery_app worker --loglevel=info"
+beat = "celery -A starlette_admin_demo.celery_app beat --loglevel=info"
+flower = "celery -A starlette_admin_demo.celery_app flower --port=5555"
+format.sequence = [
+    "ruff format",
+    "ruff check . --fix",
+    "djlint templates --reformat --format-css --format-js",
+]
 format.default_item_type = "cmd"
-
-dev = "uv run -- uvicorn app.main:app --reload"
-seed = "uv run seed.py"
