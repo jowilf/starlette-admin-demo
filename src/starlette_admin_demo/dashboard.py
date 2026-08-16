@@ -7,6 +7,7 @@ from calendar import monthrange
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date
+from importlib.metadata import version as _pkg_version
 from typing import Any, ClassVar
 from uuid import uuid4
 
@@ -43,6 +44,8 @@ from .stats import _fmt_money, _last_months, _title
 
 # Pinned to 1.3.0, the last release without a license gate (watermark).
 APEXTREE_JS = "https://cdn.jsdelivr.net/npm/apextree@1.3.0/apextree.min.js"
+
+STARLETTE_ADMIN_VERSION = _pkg_version("starlette-admin")
 
 # Colorblind-safe categorical palette; order is fixed and assigned to series in this order.
 CATEGORICAL = [
@@ -337,6 +340,13 @@ class HRDashboardView(CustomView):
                         ),
                         ("Time & Money", self._money_tab(request, month_labels)),
                     ]
+                ),
+                HtmlWidget(
+                    html=(
+                        '<div class="text-center text-muted small mt-2">'
+                        f"Powered by starlette-admin v{STARLETTE_ADMIN_VERSION}"
+                        "</div>"
+                    )
                 ),
             ]
         )

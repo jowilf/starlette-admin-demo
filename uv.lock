@@ -1804,7 +1804,7 @@ wheels = [
 
 [[package]]
 name = "starlette-admin"
-version = "1.0.0rc4"
+version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "itsdangerous" },
@@ -1812,9 +1812,9 @@ dependencies = [
     { name = "python-multipart" },
     { name = "starlette" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b9/4d/7daef7ff88684dc09fbaee0b013bcdfa4d07fdcff15a502138a54744fb4e/starlette_admin-1.0.0rc4.tar.gz", hash = "sha256:59fbf97a462880ba4fd2c9b68cc7286da5750558aa324df2e0ce256ea54dc104", size = 1231486, upload-time = "2026-07-30T07:49:39.604Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/83/d0/cead64b8e0cd1659e04f290dd7b41e7d7d1474c771b86fbf1b71d17f0ef5/starlette_admin-1.0.0.tar.gz", hash = "sha256:d15b76f120934756e1604fd5f02adf12535e4288edab5db3aad80bfb2879e5b3", size = 1231870, upload-time = "2026-08-16T07:45:27.517Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/86/0b/ed48029eb4ecacfbddeebef0a82f5002ff5024571c5b9802fe5331a3c136/starlette_admin-1.0.0rc4-py3-none-any.whl", hash = "sha256:a9620eabf6883a0afd45add318b0e01054d88770ec489856c30648b7577e4585", size = 1351409, upload-time = "2026-07-30T07:49:38.199Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/52/ebcbd7f11d509b61d6079a17a7be28588c78d8a4e2f3c2c12f3ef55914e0/starlette_admin-1.0.0-py3-none-any.whl", hash = "sha256:fbda5d19910d633e1bd155b52c0821e78c9a32e02a91f532429759455eb25d1b", size = 1351971, upload-time = "2026-08-16T07:45:25.793Z" },
 ]
 
 [package.optional-dependencies]
@@ -1864,8 +1864,8 @@ requires-dist = [
     { name = "redis", specifier = ">=6.4.0" },
     { name = "sqlalchemy", specifier = ">=2.0.51" },
     { name = "sqlalchemy-searchable", specifier = ">=3.0.0" },
-    { name = "starlette-admin", extras = ["i18n", "pdf"], specifier = "==1.0.0rc4" },
-    { name = "tablib", extras = ["all"], specifier = ">=3.9.0" },
+    { name = "starlette-admin", extras = ["i18n", "pdf"], specifier = "==1.0.0" },
+    { name = "tablib", extras = ["all"], specifier = ">=3.9.1" },
 ]
 
 [package.metadata.requires-dev]
@@ -1878,11 +1878,11 @@ dev = [
 
 [[package]]
 name = "tablib"
-version = "3.9.0"
+version = "3.10.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/11/00/416d2ba54d7d58a7f7c61bf62dfeb48fd553cf49614daf83312f2d2c156e/tablib-3.9.0.tar.gz", hash = "sha256:1b6abd8edb0f35601e04c6161d79660fdcde4abb4a54f66cc9f9054bd55d5fe2", size = 125565, upload-time = "2025-10-15T18:21:56.263Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/96/b9/59d9c8b9c34642e7a718e8a1a7a91af3eb9b48f79bac794263702d41519c/tablib-3.10.0.tar.gz", hash = "sha256:781cfa9a42de8f33c52aff857fd0a04e483de4fd1c53eaaa9a6aeac62bad11de", size = 127128, upload-time = "2026-07-31T17:30:15.577Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/66/6b/32e51d847148b299088fc42d3d896845fd09c5247190133ea69dbe71ba51/tablib-3.9.0-py3-none-any.whl", hash = "sha256:eda17cd0d4dda614efc0e710227654c60ddbeb1ca92cdcfc5c3bd1fc5f5a6e4a", size = 49580, upload-time = "2025-10-15T18:21:44.185Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/0f/3ae17545ff976687f679ed3a101df7017135ee04769e858a4ccea0cc3f3e/tablib-3.10.0-py3-none-any.whl", hash = "sha256:5721bf3a52d491f8f843628a3a3200db164f6ad9e92fb6eaa64dc3f945f30ad9", size = 50170, upload-time = "2026-07-31T17:30:04.925Z" },
 ]
 
 [package.optional-dependencies]

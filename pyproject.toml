@@ -16,7 +16,7 @@ dependencies = [
     "redis>=6.4.0",
     "flower>=2.0.1",
     "sqlalchemy-searchable>=3.0.0",
-    "tablib[all]>=3.9.0",
+    "tablib[all]>=3.9.1",
 ]
 
 [project.scripts]
