@@ -10,15 +10,11 @@ Available online [here][2]
 Usage
 -----
 
-To run this project:
+The easiest way to run this project is with Docker Compose.
 
 ### 1. Prerequisites
 
-Before you begin, make sure you have the following prerequisites installed:
-
-- [Python 3](https://www.python.org/downloads/)
-- [uv](https://docs.astral.sh/uv/)
-- [MongoDB](https://www.mongodb.com/)
+Before you begin, make sure you have [Docker](https://docs.docker.com/get-docker/) and the Docker Compose plugin installed.
 
 ### 2. Clone the repository
 
@@ -27,31 +23,53 @@ git clone https://github.com/jowilf/starlette-admin-demo.git
 cd starlette-admin-demo
 ```
 
-### 3. Create and activate a virtual environment:
+### 3. Start the application
 
 ```shell
-uv venv --python 3.12
+docker compose up -d
 ```
 
-### 4. Sync dependencies
+This will build the image and start the application together with its PostgreSQL and Redis
+dependencies, as well as the Celery worker, beat scheduler, and Flower.
+
+Then access the application in your browser at <http://localhost:8000>.
+
+To stop the application:
 
 ```shell
-uv sync
+docker compose down
 ```
 
-### 5. Create mock data:
+### Running without Docker
 
-```shell
-uv run seed
-```
+If you prefer to run the project locally instead:
 
-### 6. Run the application:
+1. Install [Python 3](https://www.python.org/downloads/) and [uv](https://docs.astral.sh/uv/).
+2. Create and activate a virtual environment:
 
-```shell
-uv run -- fastapi dev src/starlette_admin_demo/app.py
-```
+   ```shell
+   uv venv --python 3.12
+   ```
 
-Then access the application in your browser at the given URL (<https://localhost:8000> by default).
+3. Sync dependencies:
+
+   ```shell
+   uv sync
+   ```
+
+4. Create mock data:
+
+   ```shell
+   uv run seed
+   ```
+
+5. Run the application:
+
+   ```shell
+   uv run -- fastapi dev src/starlette_admin_demo/app.py
+   ```
+
+   Then access the application in your browser at the given URL (<https://localhost:8000> by default).
 
 
 [1]: https://github.com/jowilf/starlette-admin/
