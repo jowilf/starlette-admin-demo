@@ -1,0 +1,10 @@
+{% extends "@starlette-admin/login.html" %}
+{% block login_card_footer %}
+    <div class="text-center text-secondary mt-3">
+        <u>Demo accounts:</u>
+        <br>
+        username: <strong>admin</strong>, password: <strong>password</strong> (full access)
+        <br>
+        username: <strong>reader</strong>, password: <strong>password</strong> (read-only)
+    </div>
+{% endblock %}
