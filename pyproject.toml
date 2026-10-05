@@ -5,18 +5,19 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "faker>=40.28.1",
-    "fastapi[standard]>=0.139.0",
-    "markdown>=3.10.2",
+    "faker>=40.40.0",
+    "fastapi[standard]>=0.142.2",
+    "markdown>=3.11",
     "pillow>=12.3.0",
-    "sqlalchemy>=2.0.51",
-    "starlette-admin[i18n,pdf]==1.0.2",
-    "psycopg[binary,pool]>=3.3.4",
+    "sqlalchemy>=2.0.54,<2.1",
+    "starlette-admin[i18n,pdf]>=1.0.2",
+    "psycopg[binary,pool]>=3.3.6",
     "celery[redis]>=5.6.3",
     "redis>=6.4.0",
-    "flower>=2.0.1",
+    "flower>=2.2.0",
     "sqlalchemy-searchable>=3.0.0",
-    "tablib[all]>=3.9.1",
+    "tablib[all]>=3.10.0",
+    "greenlet>=3.5.6",
 ]
 
 [project.scripts]
@@ -29,10 +30,10 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "djlint>=1.40.8",
+    "djlint>=1.46.4",
     "poethepoet>=0.48.0",
-    "pre-commit>=4.6.0",
-    "ruff>=0.15.21",
+    "pre-commit>=4.6.2",
+    "ruff>=0.16.10",
 ]
 
 [tool.djlint]
