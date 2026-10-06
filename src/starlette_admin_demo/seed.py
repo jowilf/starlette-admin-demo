@@ -15,17 +15,19 @@ import re
 import time
 import uuid
 from collections import Counter, defaultdict
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Any
 
 from faker import Faker
 from PIL import Image
 from sqlalchemy import Connection, Table, bindparam, func, select, text
 from starlette_admin.storage import FileInfo, secure_filename
 
+from .audit import AuditLog
 from .config import avatars_storage
 from .config import engine as app_engine
 from .models import (
@@ -249,7 +251,7 @@ def attach_avatar(asset: Path, dims: tuple[int, int]) -> dict[str, Any]:
         size=path.stat().st_size,
         storage=avatars_storage.name,
         key=path.relative_to(avatars_storage.base_dir).as_posix(),
-        uploaded_at=datetime.now(timezone.utc),
+        uploaded_at=datetime.now(UTC),
         width=width,
         height=height,
     ).to_dict()
@@ -578,7 +580,7 @@ def build_expense_row(
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     status = pick(rng, EXPENSE_STATUSES)
     lines: list[dict[str, Any]] = []
-    total = Decimal("0")
+    total = Decimal(0)
     for _ in range(rng.randint(1, 3)):
         quantity = rng.randint(1, 5)
         unit_price = (Decimal(rng.randint(500, 40000)) / 100).quantize(Decimal("0.01"))
@@ -794,6 +796,20 @@ def seed(config: SeedConfig) -> None:
 
     elapsed = time.perf_counter() - started
     total = len(ORG_CHART) + sum(counts.values())
+    # The bulk inserts above bypass the admin (and its AuditSubscriber),
+    # so leave one summary row behind explicitly.
+    with engine.begin() as audit_conn:
+        audit_conn.execute(
+            AuditLog.__table__.insert().values(
+                event="seed",
+                view_key="seed",
+                record_pk=None,
+                detail=f"Seeded {total} records "
+                f"(scale={config.scale}, seed={config.seed}, reset={config.reset})",
+                actor="seed",
+                created_at=datetime.utcnow(),
+            )
+        )
     print(f"Done: {total} records created in {elapsed:.1f}s -> {engine.url}")
 
 

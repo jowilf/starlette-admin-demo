@@ -203,6 +203,14 @@ class InlineModelView(BaseInlineModelView):
 
 
 class DepartmentView(ModelView):
+    # Departments are reference data: readable and creatable, but never
+    # edited or deleted through the admin — not even by `admin`.
+    def can_edit(self, request: Request) -> bool:
+        return False
+
+    def can_delete(self, request: Request) -> bool:
+        return False
+
     fields = [
         "id",
         StringField(

@@ -539,4 +539,4 @@ class ExpenseLine(Base):
 
 
 # Registers the `@vectorizer`s from search.py; must come after every model class exists.
-from . import search  # noqa: E402, F401
+from . import search  # noqa: F401

@@ -4,11 +4,11 @@
 read-only widget callback that only reads Redis, so a dashboard page load never blocks on a query.
 """
 
-from collections.abc import Awaitable, Callable
-from contextlib import asynccontextmanager
 import json
 import logging
 import os
+from collections.abc import Awaitable, Callable
+from contextlib import asynccontextmanager
 from typing import Any
 
 import redis.asyncio as redis_asyncio

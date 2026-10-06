@@ -82,7 +82,9 @@ Example: `examples/10-i18n-timezone`.
 ```python
 from starlette_admin import ThemeSettings
 
-admin = Admin(engine, theme=ThemeSettings(base="slate", primary="blue", radius=2, mode="dark"))
+admin = Admin(
+    engine, theme=ThemeSettings(base="slate", primary="blue", radius=2, mode="dark")
+)
 ```
 
 `mode`: light/dark. `base`: slate, gray, zinc, neutral, stone, pink. `primary`: blue, azure, indigo, purple, pink, red, orange, yellow, lime, green, teal, cyan, inverted. `radius`: 0 to 2 in 0.5 steps. For deeper changes use `templates_dir` (files shadow built-ins at the same relative path) and `static_dir`. Example: `examples/08-themes`.

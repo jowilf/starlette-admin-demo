@@ -1,8 +1,8 @@
 """07-hr: an HR admin, ported from the Filament demo's HR module
 (filamentphp/demo, app/Models/HR)."""
 
-from contextlib import asynccontextmanager
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from starlette.applications import Starlette
