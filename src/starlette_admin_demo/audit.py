@@ -3,7 +3,7 @@
 It listens on `*_COMMITTED` events rather than `AFTER_CREATE`/`AFTER_EDIT`/`AFTER_DELETE` since those can still roll back before the session commits.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import anyio
@@ -37,7 +37,9 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC)
+    )
     event: Mapped[str] = mapped_column(String(50))
     view_key: Mapped[str] = mapped_column(String(100))
     record_pk: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -113,7 +115,7 @@ async def _write_audit(
                     record_pk=str(pk) if pk is not None else None,
                     detail=detail,
                     actor=actor,
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(UTC),
                 )
             )
             session.commit()
@@ -134,7 +136,7 @@ def log_action(request: Request, view_key: str, pk: Any, detail: str) -> None:
             record_pk=str(pk) if pk is not None else None,
             detail=detail,
             actor=_actor(request),
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
     )
 

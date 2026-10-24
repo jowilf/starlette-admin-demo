@@ -5,7 +5,7 @@
 
 from collections import Counter
 from collections.abc import Callable
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -178,7 +178,7 @@ class SoftDeleteModelView(ModelView):
     async def delete(self, request: Request, pks: list[Any]) -> int | None:
         session: Session = request.state.session
         objs = await self.find_by_pks(request, pks)
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         for obj in objs:
             await self._emit_before_delete(request, obj.id, obj)
             obj.deleted_at = now
@@ -734,7 +734,7 @@ class LeaveRequestView(ModelView):
         self, request: Request, leave_requests: list[LeaveRequest], status: LeaveStatus
     ) -> None:
         session: Session = request.state.session
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         for leave_request in leave_requests:
             leave_request.status = status
             leave_request.reviewed_at = now

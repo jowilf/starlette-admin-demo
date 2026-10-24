@@ -807,7 +807,7 @@ def seed(config: SeedConfig) -> None:
                 detail=f"Seeded {total} records "
                 f"(scale={config.scale}, seed={config.seed}, reset={config.reset})",
                 actor="seed",
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
             )
         )
     print(f"Done: {total} records created in {elapsed:.1f}s -> {engine.url}")

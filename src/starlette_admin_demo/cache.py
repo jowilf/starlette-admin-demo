@@ -85,8 +85,10 @@ async def refresh_all() -> None:
         for key, fn in _REGISTRY.items():
             try:
                 value = await fn(session)
-            except Exception:
-                _log.exception("Dashboard cache refresh failed for %r", key)
+            except Exception as exc:  # noqa: BLE001
+                _log.exception(
+                    "Dashboard cache refresh failed for %r", key, exc_info=exc
+                )
                 continue
             await _cache_set(key, value, ttl=DASHBOARD_CACHE_TTL)
 
